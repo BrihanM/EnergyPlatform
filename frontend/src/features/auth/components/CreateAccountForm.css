@@ -1,0 +1,83 @@
+.create-account-form {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  width: 100%;
+}
+
+.create-account-header {
+  text-align: center;
+}
+
+.create-account-header h1 {
+  font-size: 1.875rem;
+  font-weight: 700;
+  color: #0d47a1;
+  margin: 0;
+}
+
+.create-account-header p {
+  font-size: 0.875rem;
+  color: #64748b;
+  margin: 0.5rem 0 0;
+}
+
+.create-account-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.create-account-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.create-account-actions {
+  display: flex;
+  gap: 1rem;
+}
+
+.create-account-footer {
+  text-align: center;
+}
+
+.create-account-footer p {
+  font-size: 0.875rem;
+  color: #64748b;
+  margin: 0;
+}
+
+.create-account-link {
+  background: none;
+  border: none;
+  color: #0366cc;
+  cursor: pointer;
+  font-weight: 500;
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.create-account-link:hover {
+  color: #0a66d2;
+  text-decoration: underline;
+}
+
+@media (max-width: 640px) {
+  .create-account-form {
+    gap: 1.5rem;
+  }
+
+  .create-account-header h1 {
+    font-size: 1.5rem;
+  }
+
+  .create-account-fields {
+    gap: 1.25rem;
+  }
+
+  .create-account-row {
+    grid-template-columns: 1fr;
+  }
+}
