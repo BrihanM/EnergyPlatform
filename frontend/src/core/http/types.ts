@@ -17,6 +17,9 @@ export interface HttpRequestOptions<TBody = unknown> {
   body?: TBody;
   credentials?: RequestCredentials;
   signal?: AbortSignal;
+  requiresAuth?: boolean;
+  skipAuthRefresh?: boolean;
+  retryAfterRefreshAttempted?: boolean;
 }
 
 export interface HttpErrorResponse {

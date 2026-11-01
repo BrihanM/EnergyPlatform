@@ -1,4 +1,5 @@
 ﻿import { getAccessToken } from '../auth/tokenStore';
+import { refreshSessionSingleFlight } from '../auth/sessionRuntime';
 import { environment } from '../config/environment';
 import { HttpError } from './httpError';
 import type {
@@ -123,6 +124,9 @@ const request = async <TResponse>(
     body,
     signal,
     credentials = 'include',
+    requiresAuth = false,
+    skipAuthRefresh = false,
+    retryAfterRefreshAttempted = false,
   } = options;
 
   const requestHeaders = new Headers(headers ?? {});
@@ -172,6 +176,19 @@ const request = async <TResponse>(
   const payload = await parseResponseBody<TResponse>(response);
 
   if (!response.ok) {
+    if (response.status === 401 && requiresAuth && !skipAuthRefresh) {
+      if (!retryAfterRefreshAttempted) {
+        const refreshed = await refreshSessionSingleFlight('unauthorized');
+
+        if (refreshed) {
+          return request<TResponse>(path, {
+            ...options,
+            retryAfterRefreshAttempted: true,
+          });
+        }
+      }
+    }
+
     throw normalizeHttpError(payload as HttpErrorResponse | unknown, response.status);
   }
 

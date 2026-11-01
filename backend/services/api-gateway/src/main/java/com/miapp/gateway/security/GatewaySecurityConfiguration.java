@@ -9,6 +9,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
 import org.springframework.core.io.buffer.DataBuffer;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity;
@@ -48,10 +49,13 @@ public class GatewaySecurityConfiguration {
                 .exceptionHandling(errors -> errors.accessDeniedHandler(
                         (exchange, denied) -> forbidden(exchange)))
                 .authorizeExchange(exchange -> exchange
-                        .pathMatchers("OPTIONS", "/api/v1/auth/register",
-                                "/api/v1/auth/login", "/api/v1/auth/refresh",
-                                "/api/v1/auth/logout", "/actuator/health", "/actuator/health/**")
-                        .permitAll()
+                        .pathMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                        .pathMatchers(HttpMethod.POST,
+                                "/api/v1/auth/register",
+                                "/api/v1/auth/login",
+                                "/api/v1/auth/refresh",
+                                "/api/v1/auth/logout").permitAll()
+                        .pathMatchers(HttpMethod.GET, "/actuator/health", "/actuator/health/**").permitAll()
                         .anyExchange().authenticated())
                 .build();
     }

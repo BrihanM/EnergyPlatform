@@ -44,7 +44,17 @@ The app exposes a global auth state through `AuthProvider` and `useAuth`:
 - `authenticated`
 - `unauthenticated`
 
-The provider stores the session data in memory and exposes a minimal user model and access token. It intentionally does not implement refresh automation or full login/register flows yet.
+The provider stores the session data in memory, restores sessions on startup using `/api/v1/auth/refresh`, and keeps `initializing` until the first restore attempt finishes.
+
+## Routing and access control
+
+The app uses `react-router-dom` with:
+
+- public routes: `/login`, `/register`
+- protected route placeholder: `/app`
+- route guards that wait while auth is `initializing`
+- redirect from protected pages to `/login` for unauthenticated users
+- redirect from public auth pages to the protected area for authenticated users
 
 ## HTTP client
 
@@ -56,14 +66,13 @@ The provider stores the session data in memory and exposes a minimal user model 
 - JSON parsing
 - error normalization with status, code, message, and correlationId
 - credential-enabled requests for cookie-based flows
+- optional authenticated request mode (`requiresAuth`) with one-time retry after automatic refresh
+- single-flight refresh coordination for concurrent `401` responses on protected requests
 
 ## Not implemented yet
 
 The following are intentionally deferred and should be added in dedicated feature modules later:
 
-- login UI
-- register UI
-- full auth context
-- protected routes
-- auto refresh flow
-- localStorage token persistence
+- RBAC and permissions
+- feature-complete dashboard
+- forgot-password / password-reset / MFA

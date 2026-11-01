@@ -1,13 +1,17 @@
 import {
   useCallback,
   useContext,
+  useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactElement,
   type ReactNode,
 } from 'react'
 
 import { AuthContext } from './authContextInstance'
+import { requestSessionRefresh } from './refreshSession'
+import { markSessionInvalidated, registerSessionHandlers, refreshSessionSingleFlight, unregisterSessionHandlers } from './sessionRuntime'
 import { clearAccessToken, getAccessToken, setAccessToken } from './tokenStore'
 import type { AuthContextValue, AuthSession, AuthStatus } from './types'
 
@@ -20,7 +24,8 @@ export function AuthProvider({ children }: { children: ReactNode }): ReactElemen
 
     return storedToken ? { accessToken: storedToken } : null
   })
-  const [status, setStatus] = useState<AuthStatus>(() => (getAccessToken() ? 'authenticated' : 'unauthenticated'))
+  const [status, setStatus] = useState<AuthStatus>(() => (getAccessToken() ? 'authenticated' : 'initializing'))
+  const sessionMutationRef = useRef(0)
 
   const setSession = useCallback((nextSession: AuthSession): void => {
     setSessionState({ ...nextSession })
@@ -29,6 +34,8 @@ export function AuthProvider({ children }: { children: ReactNode }): ReactElemen
   }, [])
 
   const clearSession = useCallback((): void => {
+    sessionMutationRef.current += 1
+    markSessionInvalidated()
     setSessionState(null)
     clearAccessToken()
     setStatus('unauthenticated')
@@ -36,6 +43,8 @@ export function AuthProvider({ children }: { children: ReactNode }): ReactElemen
 
   const updateAccessToken = useCallback((token: string | null): void => {
     if (token === null) {
+      sessionMutationRef.current += 1
+      markSessionInvalidated()
       setAccessToken(null)
       setSessionState((currentSession) => (currentSession ? null : currentSession))
       setStatus('unauthenticated')
@@ -57,6 +66,61 @@ export function AuthProvider({ children }: { children: ReactNode }): ReactElemen
 
     setStatus('authenticated')
   }, [])
+
+  useEffect(() => {
+    registerSessionHandlers({
+      refreshSession: async () => {
+        const refreshVersion = sessionMutationRef.current
+        const refreshedSession = await requestSessionRefresh()
+
+        if (refreshVersion !== sessionMutationRef.current) {
+          return null
+        }
+
+        const nextSession: AuthSession = {
+          accessToken: refreshedSession.accessToken,
+          user: refreshedSession.user,
+        }
+
+        setSessionState(nextSession)
+        setAccessToken(nextSession.accessToken)
+        setStatus('authenticated')
+        return nextSession
+      },
+      clearSession,
+    })
+
+    if (getAccessToken()) {
+      return () => {
+        unregisterSessionHandlers()
+      }
+    }
+
+    let isMounted = true
+
+    refreshSessionSingleFlight('startup')
+      .then((restored) => {
+        if (!isMounted) {
+          return
+        }
+
+        if (!restored) {
+          setStatus('unauthenticated')
+        }
+      })
+      .catch(() => {
+        if (!isMounted) {
+          return
+        }
+
+        setStatus('unauthenticated')
+      })
+
+    return () => {
+      isMounted = false
+      unregisterSessionHandlers()
+    }
+  }, [clearSession])
 
   const value = useMemo<AuthContextValue>(
     () => ({
