@@ -7,6 +7,17 @@ utilizadas para acceder a la plataforma. Está organizado con arquitectura
 hexagonal: el caso de uso vive en `application`, las reglas y modelos puros en
 `domain`, y los adaptadores REST, JPA y de hashing en `infrastructure`.
 
+## Ejecución en Docker
+
+Auth Service se ejecuta internamente en Docker en el puerto `8081` y espera el
+health check de PostgreSQL antes de iniciar Flyway. No publica puertos al host;
+el acceso externo debe pasar por API Gateway. El entorno completo se inicia con
+`docker compose up --build`.
+
+La ruta `GET /api/v1/integration/probe` es únicamente un recurso técnico para
+validar el forwarding protegido del Gateway, la identidad derivada del JWT y
+el correlation ID. No representa lógica de negocio.
+
 ## Registro de usuario
 
 El caso de uso `RegisterUserUseCase` recibe un `RegisterUserCommand`, valida las

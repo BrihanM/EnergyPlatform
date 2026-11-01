@@ -31,6 +31,23 @@ deben conectarse a una red interna y sólo Gateway debe aceptar tráfico externo
 
 La dependencia apunta hacia el interior: infrastructure -> application -> domain. Los controladores y repositorios no contienen reglas de negocio.
 
+## Despliegue Docker
+
+El tráfico externo entra únicamente por `api-gateway` en el puerto `8080`.
+Gateway está conectado a `gateway-edge` y `backend-internal`; `auth-service`,
+PostgreSQL y Redis sólo están conectados a `backend-internal`, que es una red
+interna de Docker. El flujo de ejecución es:
+
+```text
+Client -> API Gateway -> Auth Service -> PostgreSQL
+                             |
+                             -> Redis (infraestructura disponible)
+```
+
+El entorno reproducible se inicia con `docker compose up --build`. PostgreSQL
+y Redis tienen health checks, y Auth Service espera a PostgreSQL antes de
+ejecutar Flyway y arrancar.
+
 ## Responsabilidades transversales
 
 El Gateway es el punto de entrada externo, encargado de routing, validación

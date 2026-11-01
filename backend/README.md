@@ -21,25 +21,30 @@ identidad enviados por clientes y propaga únicamente la identidad validada.
 También propaga `X-Correlation-ID`, emite auditoría técnica estructurada y
 aplica CORS y headers de seguridad.
 
-## Inicio local
+## Inicio con Docker Compose
 
-Requisitos: Java 21 y Docker Desktop con Compose. Para iniciar PostgreSQL y
-Redis:
+Requisitos: Java 21 y Docker Desktop con Compose. Copia la plantilla de
+variables y levanta todo el entorno:
 
 ```powershell
 Copy-Item .env.example .env
-docker compose up -d
-.\mvnw.cmd clean verify
+docker compose up --build
 ```
 
-Inicia cada aplicación desde su módulo con el mismo `.env` cargado en el
-entorno. El Gateway queda en `http://localhost:8080` y `auth-service` en
-`http://localhost:8081`; en producción los microservicios deben permanecer en
-una red privada y sólo el Gateway debe exponerse públicamente.
+El único puerto publicado es el Gateway en `http://localhost:8080`.
+`auth-service`, PostgreSQL y Redis sólo son accesibles en la red Docker interna.
+Los health checks de Compose esperan a PostgreSQL y a Auth Service antes de
+iniciar el siguiente servicio. Para validar el build localmente:
+
+```powershell
+.\mvnw.cmd clean verify
+docker compose config --quiet
+```
 
 El flujo es: `register` -> `login` (JWT + cookie de refresh) -> solicitud
-protegida -> `refresh` (rotación) -> `logout`. Las solicitudes desde navegador
-que usen cookies deben habilitar `withCredentials: true`.
+protegida -> `refresh` (rotación) -> `logout`. La ruta técnica protegida
+`GET /api/v1/integration/probe` permite verificar forwarding, identidad derivada
+del JWT y `X-Correlation-ID` sin introducir lógica de negocio.
 
 Consulta `docs/` para las decisiones y convenciones obligatorias, y
 `docs/API_GATEWAY.md` para su operación.

@@ -2,6 +2,7 @@ FROM maven:3.9.11-eclipse-temurin-21 AS build
 
 WORKDIR /workspace
 COPY pom.xml .
+COPY services/auth-service/pom.xml services/auth-service/pom.xml
 COPY services/api-gateway/pom.xml services/api-gateway/pom.xml
 RUN mvn -B -ntp -pl services/api-gateway dependency:go-offline
 COPY services/api-gateway/src services/api-gateway/src

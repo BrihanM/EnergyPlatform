@@ -21,7 +21,7 @@ class GatewayConfigurationTest {
      */
     @Test
     void exposesConfiguredAuthRoute() {
-        assertThat(environment.getProperty("spring.cloud.gateway.routes[0].id"))
+        assertThat(environment.getProperty("spring.cloud.gateway.server.webflux.routes[0].id"))
                 .isEqualTo("auth-service");
     }
 }

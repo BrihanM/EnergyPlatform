@@ -81,6 +81,15 @@ directamente a Internet.
 | `CORS_ALLOW_CREDENTIALS` | `true` | Credenciales CORS |
 | `CORS_MAX_AGE` | `3600` | Duración del preflight |
 
+En Docker, `AUTH_SERVICE_URI` se configura como `http://auth-service:8081`;
+Auth Service no publica un puerto al host. El Gateway expone únicamente
+`127.0.0.1:8080` por defecto y reporta su estado en `/actuator/health`.
+
+La ruta protegida `GET /api/v1/integration/probe` es un recurso técnico de
+validación. Confirma que el Gateway valida el JWT, elimina headers de identidad
+enviados por el cliente y propaga la identidad confiable junto con
+`X-Correlation-ID`.
+
 ## Correlation ID
 
 El Gateway conserva un `X-Correlation-ID` válido, o genera un UUID nuevo. Sólo
