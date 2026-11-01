@@ -2,6 +2,8 @@ export type AuthStatus = 'initializing' | 'authenticated' | 'unauthenticated'
 
 export interface AuthenticatedUser {
   id?: string
+  firstName?: string
+  lastName?: string
   email?: string
   username?: string
 }
