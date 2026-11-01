@@ -1,5 +1,4 @@
 import {
-  createContext,
   useCallback,
   useContext,
   useMemo,
@@ -8,10 +7,9 @@ import {
   type ReactNode,
 } from 'react'
 
+import { AuthContext } from './authContextInstance'
 import { clearAccessToken, getAccessToken, setAccessToken } from './tokenStore'
 import type { AuthContextValue, AuthSession, AuthStatus } from './types'
-
-const AuthContext = createContext<AuthContextValue | null>(null)
 
 /**
  * Provides the global application authentication state in memory.
@@ -25,7 +23,7 @@ export function AuthProvider({ children }: { children: ReactNode }): ReactElemen
   const [status, setStatus] = useState<AuthStatus>(() => (getAccessToken() ? 'authenticated' : 'unauthenticated'))
 
   const setSession = useCallback((nextSession: AuthSession): void => {
-    setSessionState(nextSession)
+    setSessionState({ ...nextSession })
     setAccessToken(nextSession.accessToken)
     setStatus('authenticated')
   }, [])
@@ -37,20 +35,27 @@ export function AuthProvider({ children }: { children: ReactNode }): ReactElemen
   }, [])
 
   const updateAccessToken = useCallback((token: string | null): void => {
+    if (token === null) {
+      setAccessToken(null)
+      setSessionState((currentSession) => (currentSession ? null : currentSession))
+      setStatus('unauthenticated')
+      return
+    }
+
     setAccessToken(token)
 
     setSessionState((currentSession) => {
       if (!currentSession) {
-        return currentSession
+        return { accessToken: token }
       }
 
       return {
         ...currentSession,
-        accessToken: token ?? currentSession.accessToken,
+        accessToken: token,
       }
     })
 
-    setStatus(token ? 'authenticated' : 'unauthenticated')
+    setStatus('authenticated')
   }, [])
 
   const value = useMemo<AuthContextValue>(

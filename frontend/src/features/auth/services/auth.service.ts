@@ -1,42 +1,56 @@
-import { httpClient } from '../../../core/http/httpClient';
+﻿import { httpClient } from '../../../core/http/httpClient';
 
-export interface LoginPayload {
+export interface LoginRequest {
+  identifier: string;
+  password: string;
+}
+
+export interface RegisterRequest {
+  firstName: string;
+  lastName: string;
+  username: string;
   email: string;
   password: string;
 }
 
-export interface RegisterPayload {
-  displayName: string;
+export interface AuthUserSummary {
+  id: string;
+  firstName: string;
+  lastName: string;
+  username: string;
   email: string;
-  password: string;
+  createdAt?: string;
 }
 
-export interface AuthSuccessResponse {
-  message?: string;
-  user?: {
-    id: string;
-    email: string;
-    displayName?: string;
-  };
+export interface LoginResponse {
+  authenticated: boolean;
+  accessToken: string;
+  tokenType: string;
+  expiresIn: number;
+  user: AuthUserSummary;
 }
 
-export interface GatewayHealthResponse {
+export interface RegisterResponse {
+  id: string;
+  firstName: string;
+  lastName: string;
+  username: string;
+  email: string;
   status: string;
-  timestamp?: string;
+  createdAt: string;
 }
 
 export const authService = {
-  health: () => httpClient.get<GatewayHealthResponse>('/api/v1/integration/health'),
-  login: (payload: LoginPayload) =>
-    httpClient.post<AuthSuccessResponse>('/api/v1/auth/login', { body: payload }),
-  register: (payload: RegisterPayload) =>
-    httpClient.post<AuthSuccessResponse>('/api/v1/auth/register', { body: payload }),
+  login: (payload: LoginRequest) =>
+    httpClient.post<LoginResponse>('/api/v1/auth/login', { body: payload }),
+  register: (payload: RegisterRequest) =>
+    httpClient.post<RegisterResponse>('/api/v1/auth/register', { body: payload }),
   refresh: () =>
-    httpClient.post<{ message?: string }>('/api/v1/auth/refresh', {
+    httpClient.post<LoginResponse>('/api/v1/auth/refresh', {
       credentials: 'include',
     }),
   logout: () =>
-    httpClient.post<{ message?: string }>('/api/v1/auth/logout', {
+    httpClient.post<void>('/api/v1/auth/logout', {
       credentials: 'include',
     }),
 };

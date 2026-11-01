@@ -1,4 +1,4 @@
-import { getAccessToken } from '../auth/tokenStore';
+﻿import { getAccessToken } from '../auth/tokenStore';
 import { environment } from '../config/environment';
 import { HttpError } from './httpError';
 import type {
@@ -36,7 +36,7 @@ export const buildUrl = (
   const targetUrl =
     path.startsWith('http://') || path.startsWith('https://')
       ? path
-      : `${normalizedBaseUrl}${path.startsWith('/') ? path : `/${path}`}`;
+      : normalizedBaseUrl + (path.startsWith('/') ? path : '/' + path);
 
   const url = new URL(targetUrl);
 
@@ -102,13 +102,12 @@ const extractErrorMessage = (payload: unknown): string | undefined => {
 export const normalizeHttpError = (payload: unknown, status: number): HttpError => {
   const record = typeof payload === 'object' && payload !== null ? (payload as Record<string, unknown>) : {};
   const code = typeof record.code === 'string' ? record.code : undefined;
-  const correlationId =
-    typeof record.correlationId === 'string' ? record.correlationId : undefined;
+  const correlationId = typeof record.correlationId === 'string' ? record.correlationId : undefined;
 
   return new HttpError({
     status,
     code,
-    message: extractErrorMessage(payload) ?? `Request failed with status ${status}`,
+    message: extractErrorMessage(payload) ?? ('Request failed with status ' + status),
     correlationId,
   });
 };
@@ -155,7 +154,7 @@ const request = async <TResponse>(
   const accessToken = getAccessToken();
 
   if (accessToken && !requestHeaders.has('Authorization')) {
-    requestHeaders.set('Authorization', `Bearer ${accessToken}`);
+    requestHeaders.set('Authorization', 'Bearer ' + accessToken);
   }
 
   const response = await fetch(requestUrl, {

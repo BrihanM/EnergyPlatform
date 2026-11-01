@@ -1,6 +1,6 @@
 import { useContext } from 'react'
 
-import { AuthContext } from './AuthContext'
+import { AuthContext } from './authContextInstance'
 import type { AuthContextValue } from './types'
 
 /**
