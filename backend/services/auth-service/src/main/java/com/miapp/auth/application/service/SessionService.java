@@ -52,4 +52,20 @@ public class SessionService {
     public Session revoke(Session session) {
         return sessionPersistence.save(session.revoke(clock.instant()));
     }
+
+    public String generateReplacementToken(Session session) {
+        String refreshToken = tokenGenerator.generate();
+        Session rotated = session.replaceRefreshToken(tokenHashing.hash(refreshToken),
+                clock.instant().plus(expiration), clock.instant());
+        sessionPersistence.save(rotated);
+        return refreshToken;
+    }
+
+    public boolean matches(String refreshToken, Session session) {
+        return tokenHashing.matches(refreshToken, session.refreshTokenHash());
+    }
+
+    public String hash(String refreshToken) {
+        return tokenHashing.hash(refreshToken);
+    }
 }

@@ -4,6 +4,7 @@ import com.miapp.auth.domain.exception.DuplicateEmailException;
 import com.miapp.auth.domain.exception.DuplicateUsernameException;
 import com.miapp.auth.domain.exception.InvalidRegistrationException;
 import com.miapp.auth.domain.exception.InvalidCredentialsException;
+import com.miapp.auth.domain.exception.InvalidSessionException;
 import com.miapp.auth.domain.exception.RegistrationConflictException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -40,6 +41,12 @@ public class AuthExceptionHandler {
     ResponseEntity<ApiErrorResponse> handleInvalidCredentials(HttpServletRequest request) {
         return response(HttpStatus.UNAUTHORIZED, "Unauthorized",
                 "Credenciales inválidas.", request);
+    }
+
+    @ExceptionHandler(InvalidSessionException.class)
+    ResponseEntity<ApiErrorResponse> handleInvalidSession(HttpServletRequest request) {
+        return response(HttpStatus.UNAUTHORIZED, "Unauthorized",
+                "Sesión inválida o expirada.", request);
     }
 
     @ExceptionHandler(DataIntegrityViolationException.class)

@@ -13,6 +13,10 @@ spring:
     locations: classpath:db/migration
 
 security:
+  jwt:
+    issuer: test-issuer
+    secret: test-jwt-secret-that-is-at-least-32-bytes-long
+    expiration: "900000"
   refresh-token:
     expiration: "604800000"
     cookie:

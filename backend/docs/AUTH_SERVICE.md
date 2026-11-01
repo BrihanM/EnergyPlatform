@@ -68,11 +68,16 @@ También se permite:
 }
 ```
 
-Una autenticación válida requiere una cuenta `ACTIVE` y responde `200 OK`:
+Una autenticación válida requiere una cuenta `ACTIVE` y responde `200 OK`.
+El access token es un JWT firmado con HMAC-SHA256 y el refresh token se envía
+únicamente en una cookie `HttpOnly`; nunca forma parte del JSON:
 
 ```json
 {
   "authenticated": true,
+  "accessToken": "eyJ...",
+  "tokenType": "Bearer",
+  "expiresIn": 900,
   "user": {
     "id": "uuid",
     "firstName": "Brayan",
@@ -84,16 +89,23 @@ Una autenticación válida requiere una cuenta `ACTIVE` y responde `200 OK`:
 }
 ```
 
+El JWT contiene únicamente `sub` (UUID del usuario), `iss`, `iat`, `exp` y
+`username`. Su secreto, issuer y duración se leen desde `security.jwt`
+(`JWT_SECRET`, `JWT_ISSUER` y `JWT_EXPIRATION`); el secreto debe ser provisto
+por el entorno en producción y tener al menos 32 bytes. El access token es
+stateless y no se persiste.
+
 Las cuentas `LOCKED`, `DISABLED`, inexistentes y las contraseñas incorrectas
 producen la misma respuesta `401 Unauthorized` con el mensaje genérico
 `Credenciales inválidas.`. Esto evita revelar si un username o email está
 registrado. Para cuentas inexistentes se realiza además una comparación contra
 un hash señuelo para reducir diferencias de tiempo observables.
 
-La fase de login valida credenciales, pero todavía no genera JWT ni access
-tokens. La infraestructura de sesiones y refresh tokens está preparada para
-ser invocada por la siguiente fase, pero aún no existe un endpoint de refresh,
-rotación funcional ni logout.
+El login crea una sesión independiente, persiste solamente el hash SHA-256 del
+refresh token y devuelve el valor real exclusivamente al adaptador HTTP para
+construir la cookie configurada. La cookie usa el nombre, `Path`, `Domain`,
+`Secure`, `SameSite` y `Max-Age` definidos en `refresh-token.cookie`; no se
+expone en la respuesta JSON.
 
 ### `POST /api/v1/auth/register`
 
@@ -166,7 +178,7 @@ centralizada `RefreshTokenCookieManager` usa por defecto:
 - `HttpOnly=true`, por lo que JavaScript no puede leerla.
 - `Secure` configurable por ambiente; debe ser `true` en producción.
 - `SameSite=Lax` configurable. `SameSite=None` exige `Secure=true`.
-- `Path=/api/v1/auth`, limitado a login, refresh y logout futuros.
+- `Path=/api/v1/auth`, limitado a login, refresh y logout.
 - `Domain` vacío por defecto, lo que crea una cookie host-only; se puede
   configurar explícitamente para subdominios.
 - `Max-Age` configurable mediante `REFRESH_TOKEN_COOKIE_MAX_AGE`.
@@ -176,6 +188,22 @@ permite credenciales con orígenes explícitos (`CORS_ALLOWED_ORIGINS`).
 Nunca se debe combinar `allowCredentials=true` con `*`. El frontend futuro
 deberá enviar las solicitudes relevantes con `withCredentials: true`.
 
-La siguiente fase implementará el flujo `Login -> Session + access token JWT +
-cookie`, además de `/refresh`, rotación completa y `/logout`. JWT, refresh
-endpoint, sesiones HTTP, roles y autorización siguen fuera de esta fase.
+### `POST /api/v1/auth/refresh`
+
+Lee el refresh token desde la cookie HttpOnly, valida que la sesión exista,
+no esté revocada ni expirada y compara el hash. Una operación válida rota el
+token (el hash anterior deja de ser válido), extiende su expiración, genera un
+nuevo JWT y devuelve una nueva cookie. La operación se ejecuta dentro de una
+transacción. Las solicitudes inválidas responden con el mensaje genérico
+`Sesión inválida o expirada.`.
+
+### `POST /api/v1/auth/logout`
+
+Busca la sesión mediante el hash del refresh token, la revoca lógicamente si
+existe y siempre devuelve `204 No Content` junto con una cookie de eliminación
+con el mismo nombre, dominio y path. La operación es idempotente y no revela
+si la sesión existía.
+
+El gateway sólo enruta estos endpoints y mantiene CORS con orígenes explícitos
+(`allowCredentials=true`); todavía no valida JWT ni aplica autorización. El
+frontend debe enviar login, refresh y logout con `withCredentials: true`.

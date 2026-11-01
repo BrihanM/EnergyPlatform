@@ -24,6 +24,10 @@ public class RefreshTokenCookieManager {
         return baseCookie("").maxAge(0).build();
     }
 
+    public String name() {
+        return properties.name();
+    }
+
     private ResponseCookie.ResponseCookieBuilder baseCookie(String value) {
         ResponseCookie.ResponseCookieBuilder builder = ResponseCookie.from(properties.name(), value)
                 .httpOnly(true)

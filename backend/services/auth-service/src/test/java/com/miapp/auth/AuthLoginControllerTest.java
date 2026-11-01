@@ -4,6 +4,7 @@ import com.miapp.auth.application.port.in.LoginUseCase;
 import com.miapp.auth.application.result.LoginResult;
 import com.miapp.auth.domain.model.AccountStatus;
 import com.miapp.auth.infrastructure.adapter.in.web.AuthLoginController;
+import com.miapp.auth.infrastructure.adapter.in.web.RefreshTokenCookieManager;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -29,6 +30,9 @@ class AuthLoginControllerTest {
 
     @MockitoBean
     private LoginUseCase loginUseCase;
+
+    @MockitoBean
+    private RefreshTokenCookieManager cookieManager;
 
     @Test
     void returnsAuthenticatedUserWithoutCredentialsOrTokens() throws Exception {

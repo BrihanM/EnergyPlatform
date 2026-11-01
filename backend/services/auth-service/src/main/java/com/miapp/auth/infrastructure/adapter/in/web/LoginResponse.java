@@ -10,11 +10,15 @@ import java.util.UUID;
  */
 public record LoginResponse(
         boolean authenticated,
+        String accessToken,
+        String tokenType,
+        long expiresIn,
         UserResponse user) {
 
     static LoginResponse from(LoginResult result) {
         LoginResult.UserSummary user = result.user();
-        return new LoginResponse(result.authenticated(), new UserResponse(
+        return new LoginResponse(result.authenticated(), result.accessToken(), "Bearer",
+                result.expiresIn(), new UserResponse(
                 user.id(), user.firstName(), user.lastName(), user.username(),
                 user.email(), user.createdAt()));
     }

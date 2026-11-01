@@ -3,6 +3,7 @@ package com.miapp.auth.application.port.out;
 import com.miapp.auth.domain.model.Account;
 
 import java.util.Optional;
+import java.util.UUID;
 
 /**
  * Puerto de salida para la persistencia de cuentas de acceso.
@@ -37,4 +38,6 @@ public interface AccountPersistencePort {
      * @return cuenta encontrada, si existe
      */
     Optional<Account> findByUsernameOrEmail(String identifier);
+
+    Optional<Account> findById(UUID id);
 }

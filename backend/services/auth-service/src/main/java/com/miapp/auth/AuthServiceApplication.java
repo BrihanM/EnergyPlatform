@@ -4,6 +4,7 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import com.miapp.auth.application.service.SessionProperties;
+import com.miapp.auth.application.service.JwtProperties;
 import com.miapp.auth.infrastructure.config.RefreshTokenCookieProperties;
 
 /**
@@ -14,7 +15,8 @@ import com.miapp.auth.infrastructure.config.RefreshTokenCookieProperties;
  * respetando la arquitectura hexagonal.</p>
  */
 @SpringBootApplication
-@EnableConfigurationProperties({SessionProperties.class, RefreshTokenCookieProperties.class})
+@EnableConfigurationProperties({SessionProperties.class, RefreshTokenCookieProperties.class,
+        JwtProperties.class})
 public class AuthServiceApplication {
 
     /**

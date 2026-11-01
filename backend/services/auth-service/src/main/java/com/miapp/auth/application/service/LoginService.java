@@ -5,12 +5,16 @@ import com.miapp.auth.application.port.in.LoginUseCase;
 import com.miapp.auth.application.port.out.AccountPersistencePort;
 import com.miapp.auth.application.port.out.PasswordHashingPort;
 import com.miapp.auth.application.port.out.UserPersistencePort;
+import com.miapp.auth.application.port.out.AccessTokenGeneratorPort;
+import com.miapp.auth.application.result.CreateSessionResult;
 import com.miapp.auth.application.result.LoginResult;
 import com.miapp.auth.domain.exception.InvalidCredentialsException;
 import com.miapp.auth.domain.model.Account;
 import com.miapp.auth.domain.model.AccountStatus;
 import com.miapp.auth.domain.model.User;
 import org.springframework.stereotype.Service;
+import org.springframework.beans.factory.annotation.Autowired;
+import java.time.Clock;
 
 /**
  * Servicio de aplicación para autenticar cuentas mediante username o email.
@@ -27,13 +31,30 @@ public class LoginService implements LoginUseCase {
     private final AccountPersistencePort accountPersistencePort;
     private final UserPersistencePort userPersistencePort;
     private final PasswordHashingPort passwordHashingPort;
+    private final SessionService sessionService;
+    private final AccessTokenGeneratorPort accessTokenGenerator;
+    private final Clock clock;
 
     public LoginService(AccountPersistencePort accountPersistencePort,
                         UserPersistencePort userPersistencePort,
                         PasswordHashingPort passwordHashingPort) {
+        this(accountPersistencePort, userPersistencePort, passwordHashingPort,
+                null, null, null);
+    }
+
+    @Autowired
+    public LoginService(AccountPersistencePort accountPersistencePort,
+                        UserPersistencePort userPersistencePort,
+                        PasswordHashingPort passwordHashingPort,
+                        SessionService sessionService,
+                        AccessTokenGeneratorPort accessTokenGenerator,
+                        Clock clock) {
         this.accountPersistencePort = accountPersistencePort;
         this.userPersistencePort = userPersistencePort;
         this.passwordHashingPort = passwordHashingPort;
+        this.sessionService = sessionService;
+        this.accessTokenGenerator = accessTokenGenerator;
+        this.clock = clock;
     }
 
     @Override
@@ -54,9 +75,17 @@ public class LoginService implements LoginUseCase {
 
         User user = userPersistencePort.findById(account.userId())
                 .orElseThrow(InvalidCredentialsException::new);
-        return new LoginResult(true, new LoginResult.UserSummary(
+        LoginResult.UserSummary summary = new LoginResult.UserSummary(
                 user.id(), user.firstName(), user.lastName(),
-                account.username(), account.email(), user.createdAt()));
+                account.username(), account.email(), user.createdAt());
+        if (sessionService == null) {
+            return new LoginResult(true, summary);
+        }
+        CreateSessionResult session = sessionService.create(account.id());
+        AccessTokenGeneratorPort.AccessToken accessToken =
+                accessTokenGenerator.generate(user.id(), account.username(), clock.instant());
+        return new LoginResult(true, summary, accessToken.value(),
+                accessToken.expiresInSeconds(), session.refreshToken());
     }
 
     /**

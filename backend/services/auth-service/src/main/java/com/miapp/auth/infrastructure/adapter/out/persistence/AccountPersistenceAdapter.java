@@ -5,6 +5,7 @@ import com.miapp.auth.domain.model.Account;
 import org.springframework.stereotype.Component;
 
 import java.util.Optional;
+import java.util.UUID;
 
 /**
  * Adaptador que implementa el puerto de cuentas mediante Spring Data JPA.
@@ -43,5 +44,10 @@ public class AccountPersistenceAdapter implements AccountPersistencePort {
     public Optional<Account> findByUsernameOrEmail(String identifier) {
         return repository.findByUsernameOrEmail(identifier, identifier)
                 .map(AccountPersistenceMapper::toDomain);
+    }
+
+    @Override
+    public Optional<Account> findById(UUID id) {
+        return repository.findById(id).map(AccountPersistenceMapper::toDomain);
     }
 }
