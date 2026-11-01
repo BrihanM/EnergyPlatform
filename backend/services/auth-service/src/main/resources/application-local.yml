@@ -1,0 +1,17 @@
+spring:
+  config:
+    activate:
+      on-profile: local
+  datasource:
+    url: ${AUTH_DB_URL:jdbc:postgresql://localhost:${POSTGRES_PORT:5432}/${POSTGRES_DB:mi_app}}
+    username: ${AUTH_DB_USERNAME:${POSTGRES_USER:mi_app}}
+    password: ${AUTH_DB_PASSWORD:${POSTGRES_PASSWORD:change-me-local}}
+    hikari:
+      maximum-pool-size: ${AUTH_DB_POOL_SIZE:10}
+      minimum-idle: ${AUTH_DB_MIN_IDLE:2}
+  jpa:
+    show-sql: false
+
+logging:
+  level:
+    org.hibernate.SQL: WARN

@@ -7,7 +7,7 @@
 
 | Servicio | Imagen fijada | Puerto local | Uso |
 |---|---|---:|---|
-| PostgreSQL | `postgres:17.6-alpine3.22` | `${POSTGRES_PORT}` -> 5432 | Base relacional compartida |
+| PostgreSQL | `postgres:18.6-alpine3.24` | `${POSTGRES_PORT}` -> 5432 | Base relacional compartida |
 | Redis | `redis:8.2.1-alpine3.22` | `${REDIS_PORT}` -> 6379 | Caché y almacenamiento temporal |
 
 Ambos servicios están en la red interna `mi-app-backend-internal`. Los puertos
