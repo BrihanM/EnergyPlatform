@@ -10,9 +10,8 @@ import com.miapp.auth.infrastructure.config.RefreshTokenCookieProperties;
 /**
  * Punto de entrada del microservicio de autenticación.
  *
- * <p>Actualmente sólo inicializa la aplicación Spring Boot. La lógica de
- * usuarios, autenticación y persistencia se incorporará posteriormente
- * respetando la arquitectura hexagonal.</p>
+ * <p>Inicializa el servicio de autenticación y registra las propiedades
+ * tipadas de sesiones, JWT y cookies de refresh.</p>
  */
 @SpringBootApplication
 @EnableConfigurationProperties({SessionProperties.class, RefreshTokenCookieProperties.class,

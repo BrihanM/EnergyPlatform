@@ -9,19 +9,37 @@ spring:
           uri: ${AUTH_SERVICE_URI:http://localhost:8081}
           predicates:
             - Path=/api/v1/auth/**
+        - id: auth-integration-probe
+          uri: ${AUTH_SERVICE_URI:http://localhost:8081}
+          predicates:
+            - Path=/api/v1/integration/**
       globalcors:
         add-to-simple-url-handler-mapping: true
         cors-configurations:
           '[/**]':
             allowedOrigins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173}
             allowedMethods: ${CORS_ALLOWED_METHODS:GET,POST,PUT,PATCH,DELETE,OPTIONS}
-            allowedHeaders: ${CORS_ALLOWED_HEADERS:Content-Type,X-Correlation-ID}
+            allowedHeaders: ${CORS_ALLOWED_HEADERS:Authorization,Content-Type,X-Correlation-ID}
             exposedHeaders: X-Correlation-ID
             allowCredentials: ${CORS_ALLOW_CREDENTIALS:true}
             maxAge: ${CORS_MAX_AGE:3600}
 
 server:
   port: ${SERVER_PORT:8080}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never
+
+security:
+  jwt:
+    issuer: ${JWT_ISSUER:mi-app-auth}
+    secret: ${JWT_SECRET}
 
 logging:
   level:

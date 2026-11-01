@@ -5,6 +5,8 @@
 .vscode
 target
 **/target
+**/.mvn
+**/node_modules
 *.log
 docs
 README.md

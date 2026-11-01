@@ -91,8 +91,8 @@ El access token es un JWT firmado con HMAC-SHA256 y el refresh token se envía
 
 El JWT contiene únicamente `sub` (UUID del usuario), `iss`, `iat`, `exp` y
 `username`. Su secreto, issuer y duración se leen desde `security.jwt`
-(`JWT_SECRET`, `JWT_ISSUER` y `JWT_EXPIRATION`); el secreto debe ser provisto
-por el entorno en producción y tener al menos 32 bytes. El access token es
+(`JWT_SECRET`, `JWT_ISSUER` y `JWT_EXPIRATION`); `JWT_SECRET` es obligatorio,
+debe ser provisto por el entorno y tener al menos 32 bytes. El access token es
 stateless y no se persiste.
 
 Las cuentas `LOCKED`, `DISABLED`, inexistentes y las contraseñas incorrectas

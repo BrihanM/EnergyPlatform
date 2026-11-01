@@ -20,6 +20,15 @@ spring:
 server:
   port: ${SERVER_PORT:8081}
 
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never
+
 logging:
   level:
     root: INFO
@@ -28,7 +37,7 @@ logging:
 security:
   jwt:
     issuer: ${JWT_ISSUER:mi-app-auth}
-    secret: ${JWT_SECRET:change-me-local-jwt-secret-at-least-32-bytes}
+    secret: ${JWT_SECRET}
     expiration: ${JWT_EXPIRATION:900000}
   refresh-token:
     expiration: ${REFRESH_TOKEN_EXPIRATION:604800000}

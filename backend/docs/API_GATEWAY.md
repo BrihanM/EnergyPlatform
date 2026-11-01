@@ -3,8 +3,8 @@
 ## Responsabilidad
 
 `api-gateway` es el punto de entrada HTTP externo. Centraliza routing,
-trazabilidad, auditoría técnica, CORS y headers de seguridad, pero no contiene
-reglas de negocio ni autentica usuarios en esta fase.
+trazabilidad, auditoría técnica, CORS, headers de seguridad y validación de
+access tokens JWT, pero no contiene reglas de negocio.
 
 Está construido sobre Spring Cloud Gateway WebFlux y no debe incorporar
 dependencias MVC.
@@ -14,6 +14,7 @@ dependencias MVC.
 - `config/`: configuración de rutas, CORS, errores y headers.
 - `correlation/`: validación y generación de `X-Correlation-ID`.
 - `filter/`: filtros globales reactivos.
+- `security/`: validación JWT, autenticación WebFlux y propagación de identidad.
 - `audit/`: evento y puerto de publicación de auditoría.
 - `error/`: respuesta y manejo uniforme de errores del Gateway.
 
@@ -32,6 +33,42 @@ Para registrar otro microservicio, añadir otra entrada con un `id` único, su
 URI configurable por variable de entorno y sus predicates. No se debe añadir
 routing al código Java ni codificar IPs de contenedores.
 
+## Seguridad JWT
+
+El Gateway usa Spring Security WebFlux y valida antes del routing:
+
+- firma HMAC-SHA256;
+- `iss` contra `JWT_ISSUER`;
+- `exp` mediante el parser JWT;
+- `sub` como UUID del usuario;
+- `username` no vacío.
+
+El secreto se obtiene obligatoriamente de `JWT_SECRET` y debe ser externo al
+repositorio, tener al menos 32 bytes y coincidir con el secreto usado por
+`auth-service`. Un JWT
+ausente, malformado, expirado, con firma inválida, issuer inválido o claims
+inválidos produce `401 Unauthorized` sin detalles internos.
+Las denegaciones futuras de autorización se responderán como `403 Forbidden`
+sin exponer detalles de políticas.
+
+Son públicas únicamente las operaciones `POST /api/v1/auth/register`,
+`POST /api/v1/auth/login`, `POST /api/v1/auth/refresh`,
+`POST /api/v1/auth/logout`, `OPTIONS` y `GET /actuator/health` (incluyendo
+subrutas de health). El resto requiere `Authorization: Bearer <JWT>`.
+
+Tras validar el JWT, el Gateway elimina siempre los headers de identidad
+recibidos del cliente y añade:
+
+```text
+X-Authenticated-User-Id
+X-Authenticated-Username
+```
+
+El token no se reenvía ni se registra. `X-Authenticated-Account-Id` no se
+propaga porque el JWT actual no contiene `accountId`. Estos headers sólo son
+confiables dentro de la red interna; los microservicios no deben exponerse
+directamente a Internet.
+
 ## Variables de entorno
 
 | Variable | Predeterminado | Propósito |
@@ -40,8 +77,8 @@ routing al código Java ni codificar IPs de contenedores.
 | `AUTH_SERVICE_URI` | `http://localhost:8081` | Destino de Auth |
 | `CORS_ALLOWED_ORIGINS` | `http://localhost:5173` | Orígenes autorizados |
 | `CORS_ALLOWED_METHODS` | `GET,POST,PUT,PATCH,DELETE,OPTIONS` | Métodos CORS |
-| `CORS_ALLOWED_HEADERS` | `Content-Type,X-Correlation-ID` | Headers permitidos |
-| `CORS_ALLOW_CREDENTIALS` | `false` | Credenciales CORS |
+| `CORS_ALLOWED_HEADERS` | `Authorization,Content-Type,X-Correlation-ID` | Headers permitidos |
+| `CORS_ALLOW_CREDENTIALS` | `true` | Credenciales CORS |
 | `CORS_MAX_AGE` | `3600` | Duración del preflight |
 
 ## Correlation ID
@@ -77,12 +114,15 @@ Los fallos de comunicación y timeout se traducen, respectivamente, a 502 y
 y `correlationId`. No se exponen stack traces ni detalles de infraestructura.
 Los status HTTP que ya produjo un upstream no se reemplazan por este handler.
 
-## CORS y seguridad
+## CORS y cookies
 
-CORS está restringido al origen configurado y no usa `*`. Se añaden
+CORS está restringido al origen configurado y no usa `*`. Se permite el header
+`Authorization`, preflight `OPTIONS` y credenciales según configuración. Se añaden
 `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy` y
-`Permissions-Policy`. JWT, login, refresh tokens, roles y autenticación
-service-to-service quedan pendientes.
+`Permissions-Policy`. El Gateway no elimina ni reescribe `Set-Cookie`, por lo
+que las cookies HttpOnly de login, refresh y logout atraviesan el proxy.
+
+Roles, permisos, RBAC y autenticación service-to-service quedan pendientes.
 
 ## Ejecución y pruebas
 
