@@ -24,8 +24,18 @@ public class AccountPersistenceAdapter implements AccountPersistencePort {
     }
 
     @Override
-    public Optional<Account> findByLoginIdentifier(String loginIdentifier) {
-        return repository.findByLoginIdentifier(loginIdentifier)
+    public boolean existsByUsername(String username) {
+        return repository.existsByUsername(username);
+    }
+
+    @Override
+    public boolean existsByEmail(String email) {
+        return repository.existsByEmail(email);
+    }
+
+    @Override
+    public Optional<Account> findByUsername(String username) {
+        return repository.findByUsername(username)
                 .map(AccountPersistenceMapper::toDomain);
     }
 }

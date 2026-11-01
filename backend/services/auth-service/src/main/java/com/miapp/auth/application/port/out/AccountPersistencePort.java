@@ -23,5 +23,9 @@ public interface AccountPersistencePort {
      * @param loginIdentifier identificador utilizado para acceder
      * @return cuenta encontrada, si existe
      */
-    Optional<Account> findByLoginIdentifier(String loginIdentifier);
+    boolean existsByUsername(String username);
+
+    boolean existsByEmail(String email);
+
+    Optional<Account> findByUsername(String username);
 }

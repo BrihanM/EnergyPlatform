@@ -13,7 +13,8 @@ import java.util.UUID;
 public final class User {
 
     private final UUID id;
-    private final String displayName;
+    private final String firstName;
+    private final String lastName;
     private final Instant createdAt;
     private final Instant updatedAt;
 
@@ -21,13 +22,15 @@ public final class User {
      * Crea una identidad con un identificador distribuido y sus datos básicos.
      *
      * @param id identificador único de la identidad
-     * @param displayName nombre de presentación de la identidad
+     * @param firstName nombre de la identidad
+     * @param lastName apellido de la identidad
      * @param createdAt instante de creación
      * @param updatedAt instante de última actualización
      */
-    public User(UUID id, String displayName, Instant createdAt, Instant updatedAt) {
+    public User(UUID id, String firstName, String lastName, Instant createdAt, Instant updatedAt) {
         this.id = Objects.requireNonNull(id, "id must not be null");
-        this.displayName = requireText(displayName, "displayName");
+        this.firstName = requireText(firstName, "firstName");
+        this.lastName = requireText(lastName, "lastName");
         this.createdAt = Objects.requireNonNull(createdAt, "createdAt must not be null");
         this.updatedAt = Objects.requireNonNull(updatedAt, "updatedAt must not be null");
     }
@@ -35,20 +38,25 @@ public final class User {
     /**
      * Crea una identidad nueva usando el instante actual como fecha de auditoría.
      *
-     * @param displayName nombre de presentación de la identidad
+     * @param firstName nombre de la identidad
+     * @param lastName apellido de la identidad
      * @return identidad de dominio nueva
      */
-    public static User create(String displayName) {
+    public static User create(String firstName, String lastName) {
         Instant now = Instant.now();
-        return new User(UUID.randomUUID(), displayName, now, now);
+        return new User(UUID.randomUUID(), firstName, lastName, now, now);
     }
 
     public UUID id() {
         return id;
     }
 
-    public String displayName() {
-        return displayName;
+    public String firstName() {
+        return firstName;
+    }
+
+    public String lastName() {
+        return lastName;
     }
 
     public Instant createdAt() {

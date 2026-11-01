@@ -43,29 +43,29 @@ class PersistenceAdapterIntegrationTest extends PostgresIntegrationTest {
     @Test
     @Transactional
     void persistsUserAndAccountWithTheirRelationship() {
-        User user = User.create("Ada Lovelace");
+        User user = User.create("Ada", "Lovelace");
         Account account = new Account(
-                java.util.UUID.randomUUID(), user.id(), "ada@example.com", "bcrypt-hash",
+                java.util.UUID.randomUUID(), user.id(), "ada", "ada@example.com", "bcrypt-hash",
                 AccountStatus.ACTIVE, Instant.now(), Instant.now());
 
         userPersistencePort.save(user);
         accountPersistencePort.save(account);
 
         assertThat(userPersistencePort.findById(user.id())).contains(user);
-        assertThat(accountPersistencePort.findByLoginIdentifier("ada@example.com"))
+        assertThat(accountPersistencePort.findByUsername("ada"))
                 .contains(account);
     }
 
     @Test
     @Transactional
     void enforcesUniqueLoginIdentifier() {
-        User user = userPersistencePort.save(User.create("Grace Hopper"));
+        User user = userPersistencePort.save(User.create("Grace", "Hopper"));
         accountPersistencePort.save(new Account(
-                java.util.UUID.randomUUID(), user.id(), "grace@example.com", "hash-1",
+                java.util.UUID.randomUUID(), user.id(), "grace", "grace@example.com", "hash-1",
                 AccountStatus.ACTIVE, Instant.now(), Instant.now()));
 
         Account duplicate = new Account(
-                java.util.UUID.randomUUID(), user.id(), "grace@example.com", "hash-2",
+                java.util.UUID.randomUUID(), user.id(), "grace", "duplicate@example.com", "hash-2",
                 AccountStatus.ACTIVE, Instant.now(), Instant.now());
 
         assertThatThrownBy(() -> {

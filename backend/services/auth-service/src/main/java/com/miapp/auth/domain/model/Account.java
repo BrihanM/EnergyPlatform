@@ -15,7 +15,8 @@ public final class Account {
 
     private final UUID id;
     private final UUID userId;
-    private final String loginIdentifier;
+    private final String username;
+    private final String email;
     private final String passwordHash;
     private final AccountStatus status;
     private final Instant createdAt;
@@ -26,17 +27,19 @@ public final class Account {
      *
      * @param id identificador único de la cuenta
      * @param userId identidad propietaria
-     * @param loginIdentifier identificador único de acceso
+     * @param username nombre de usuario único
+     * @param email correo electrónico único
      * @param passwordHash hash seguro de la credencial
      * @param status estado operativo
      * @param createdAt instante de creación
      * @param updatedAt instante de actualización
      */
-    public Account(UUID id, UUID userId, String loginIdentifier, String passwordHash,
+    public Account(UUID id, UUID userId, String username, String email, String passwordHash,
                    AccountStatus status, Instant createdAt, Instant updatedAt) {
         this.id = Objects.requireNonNull(id, "id must not be null");
         this.userId = Objects.requireNonNull(userId, "userId must not be null");
-        this.loginIdentifier = requireText(loginIdentifier, "loginIdentifier");
+        this.username = requireText(username, "username");
+        this.email = requireText(email, "email");
         this.passwordHash = requireText(passwordHash, "passwordHash");
         this.status = Objects.requireNonNull(status, "status must not be null");
         this.createdAt = Objects.requireNonNull(createdAt, "createdAt must not be null");
@@ -51,8 +54,12 @@ public final class Account {
         return userId;
     }
 
-    public String loginIdentifier() {
-        return loginIdentifier;
+    public String username() {
+        return username;
+    }
+
+    public String email() {
+        return email;
     }
 
     public String passwordHash() {

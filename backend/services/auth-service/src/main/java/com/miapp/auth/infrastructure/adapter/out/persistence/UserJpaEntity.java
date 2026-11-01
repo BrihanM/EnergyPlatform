@@ -21,8 +21,11 @@ public class UserJpaEntity {
     @Id
     private UUID id;
 
-    @Column(name = "display_name", nullable = false, length = 200)
-    private String displayName;
+    @Column(name = "first_name", nullable = false, length = 100)
+    private String firstName;
+
+    @Column(name = "last_name", nullable = false, length = 100)
+    private String lastName;
 
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
@@ -33,9 +36,10 @@ public class UserJpaEntity {
     protected UserJpaEntity() {
     }
 
-    public UserJpaEntity(UUID id, String displayName, Instant createdAt, Instant updatedAt) {
+    public UserJpaEntity(UUID id, String firstName, String lastName, Instant createdAt, Instant updatedAt) {
         this.id = id;
-        this.displayName = displayName;
+        this.firstName = firstName;
+        this.lastName = lastName;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
     }
@@ -44,8 +48,12 @@ public class UserJpaEntity {
         return id;
     }
 
-    public String getDisplayName() {
-        return displayName;
+    public String getFirstName() {
+        return firstName;
+    }
+
+    public String getLastName() {
+        return lastName;
     }
 
     public Instant getCreatedAt() {

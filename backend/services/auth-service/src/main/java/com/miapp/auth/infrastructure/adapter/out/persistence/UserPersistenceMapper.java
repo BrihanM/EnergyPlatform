@@ -11,11 +11,12 @@ final class UserPersistenceMapper {
     }
 
     static UserJpaEntity toEntity(User user) {
-        return new UserJpaEntity(user.id(), user.displayName(), user.createdAt(), user.updatedAt());
+        return new UserJpaEntity(user.id(), user.firstName(), user.lastName(),
+                user.createdAt(), user.updatedAt());
     }
 
     static User toDomain(UserJpaEntity entity) {
-        return new User(entity.getId(), entity.getDisplayName(),
+        return new User(entity.getId(), entity.getFirstName(), entity.getLastName(),
                 entity.getCreatedAt(), entity.getUpdatedAt());
     }
 }
