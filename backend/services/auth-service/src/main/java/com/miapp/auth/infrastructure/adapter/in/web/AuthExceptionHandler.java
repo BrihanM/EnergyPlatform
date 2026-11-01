@@ -3,6 +3,7 @@ package com.miapp.auth.infrastructure.adapter.in.web;
 import com.miapp.auth.domain.exception.DuplicateEmailException;
 import com.miapp.auth.domain.exception.DuplicateUsernameException;
 import com.miapp.auth.domain.exception.InvalidRegistrationException;
+import com.miapp.auth.domain.exception.InvalidCredentialsException;
 import com.miapp.auth.domain.exception.RegistrationConflictException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -33,6 +34,12 @@ public class AuthExceptionHandler {
         String message = exception instanceof InvalidRegistrationException
                 ? exception.getMessage() : "Request data is invalid";
         return response(HttpStatus.BAD_REQUEST, "Bad Request", message, request);
+    }
+
+    @ExceptionHandler(InvalidCredentialsException.class)
+    ResponseEntity<ApiErrorResponse> handleInvalidCredentials(HttpServletRequest request) {
+        return response(HttpStatus.UNAUTHORIZED, "Unauthorized",
+                "Credenciales inválidas.", request);
     }
 
     @ExceptionHandler(DataIntegrityViolationException.class)

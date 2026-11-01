@@ -17,7 +17,7 @@ spring:
             allowedMethods: ${CORS_ALLOWED_METHODS:GET,POST,PUT,PATCH,DELETE,OPTIONS}
             allowedHeaders: ${CORS_ALLOWED_HEADERS:Content-Type,X-Correlation-ID}
             exposedHeaders: X-Correlation-ID
-            allowCredentials: ${CORS_ALLOW_CREDENTIALS:false}
+            allowCredentials: ${CORS_ALLOW_CREDENTIALS:true}
             maxAge: ${CORS_MAX_AGE:3600}
 
 server:

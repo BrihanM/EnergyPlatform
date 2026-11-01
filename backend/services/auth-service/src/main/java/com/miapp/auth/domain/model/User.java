@@ -73,4 +73,14 @@ public final class User {
         }
         return value;
     }
+
+    @Override
+    public boolean equals(Object other) {
+        return other instanceof User user && id.equals(user.id);
+    }
+
+    @Override
+    public int hashCode() {
+        return id.hashCode();
+    }
 }

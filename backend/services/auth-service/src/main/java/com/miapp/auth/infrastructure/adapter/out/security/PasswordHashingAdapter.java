@@ -17,4 +17,9 @@ public class PasswordHashingAdapter implements PasswordHashingPort {
     public String hash(String rawPassword) {
         return passwordEncoder.encode(rawPassword);
     }
+
+    @Override
+    public boolean matches(String rawPassword, String passwordHash) {
+        return passwordEncoder.matches(rawPassword, passwordHash);
+    }
 }

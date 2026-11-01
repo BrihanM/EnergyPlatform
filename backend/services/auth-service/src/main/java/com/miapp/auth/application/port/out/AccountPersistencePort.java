@@ -28,4 +28,13 @@ public interface AccountPersistencePort {
     boolean existsByEmail(String email);
 
     Optional<Account> findByUsername(String username);
+
+    /**
+     * Busca una cuenta por el identificador normalizado, que puede ser username
+     * o email.
+     *
+     * @param identifier username o email normalizado
+     * @return cuenta encontrada, si existe
+     */
+    Optional<Account> findByUsernameOrEmail(String identifier);
 }

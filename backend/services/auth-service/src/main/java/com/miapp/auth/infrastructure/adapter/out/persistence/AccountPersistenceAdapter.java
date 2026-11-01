@@ -38,4 +38,10 @@ public class AccountPersistenceAdapter implements AccountPersistencePort {
         return repository.findByUsername(username)
                 .map(AccountPersistenceMapper::toDomain);
     }
+
+    @Override
+    public Optional<Account> findByUsernameOrEmail(String identifier) {
+        return repository.findByUsernameOrEmail(identifier, identifier)
+                .map(AccountPersistenceMapper::toDomain);
+    }
 }

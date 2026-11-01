@@ -15,4 +15,6 @@ interface AccountJpaRepository extends JpaRepository<AccountJpaEntity, UUID> {
     boolean existsByEmail(String email);
 
     Optional<AccountJpaEntity> findByUsername(String username);
+
+    Optional<AccountJpaEntity> findByUsernameOrEmail(String username, String email);
 }

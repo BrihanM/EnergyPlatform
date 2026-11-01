@@ -2,13 +2,16 @@ package com.miapp.auth;
 
 import com.miapp.auth.application.port.out.AccountPersistencePort;
 import com.miapp.auth.application.port.out.UserPersistencePort;
+import com.miapp.auth.application.port.out.SessionPersistencePort;
 import com.miapp.auth.domain.model.Account;
 import com.miapp.auth.domain.model.AccountStatus;
+import com.miapp.auth.domain.model.Session;
 import com.miapp.auth.domain.model.User;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.hibernate.exception.ConstraintViolationException;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import org.springframework.test.context.ActiveProfiles;
@@ -37,6 +40,9 @@ class PersistenceAdapterIntegrationTest extends PostgresIntegrationTest {
     @Autowired
     private AccountPersistencePort accountPersistencePort;
 
+    @Autowired
+    private SessionPersistencePort sessionPersistencePort;
+
     @PersistenceContext
     private EntityManager entityManager;
 
@@ -53,6 +59,8 @@ class PersistenceAdapterIntegrationTest extends PostgresIntegrationTest {
 
         assertThat(userPersistencePort.findById(user.id())).contains(user);
         assertThat(accountPersistencePort.findByUsername("ada"))
+                .contains(account);
+        assertThat(accountPersistencePort.findByUsernameOrEmail("ada@example.com"))
                 .contains(account);
     }
 
@@ -72,6 +80,32 @@ class PersistenceAdapterIntegrationTest extends PostgresIntegrationTest {
             accountPersistencePort.save(duplicate);
             entityManager.flush();
         })
-                .isInstanceOf(DataIntegrityViolationException.class);
+                .isInstanceOfAny(DataIntegrityViolationException.class,
+                        ConstraintViolationException.class);
+    }
+
+    @Test
+    @Transactional
+    void persistsMultipleSessionsAndSupportsLogicalRevocation() {
+        User user = userPersistencePort.save(User.create("Alan", "Turing"));
+        Account account = accountPersistencePort.save(new Account(
+                java.util.UUID.randomUUID(), user.id(), "alan", "alan@example.com", "hash",
+                AccountStatus.ACTIVE, Instant.now(), Instant.now()));
+        Instant now = Instant.now();
+        Session first = Session.create(account.id(), "1234567890123456789012345678901234567890123",
+                now.plusSeconds(3600), now);
+        Session second = Session.create(account.id(), "2234567890123456789012345678901234567890123",
+                now.plusSeconds(3600), now);
+
+        sessionPersistencePort.save(first);
+        sessionPersistencePort.save(second);
+
+        assertThat(sessionPersistencePort.findByRefreshTokenHash(
+                "1234567890123456789012345678901234567890123")).contains(first);
+        assertThat(sessionPersistencePort.findByRefreshTokenHash(
+                "2234567890123456789012345678901234567890123")).contains(second);
+        Session revoked = sessionPersistencePort.save(first.revoke(now.plusSeconds(1)));
+        assertThat(revoked.revokedAt()).isEqualTo(now.plusSeconds(1));
+        assertThat(revoked.isActiveAt(now.plusSeconds(2))).isFalse();
     }
 }

@@ -26,7 +26,8 @@ credenciales reutilizadas en entornos compartidos o productivos.
 
 ## Persistencia y seguridad
 
-- `mi-app-postgres-data` mantiene los datos de PostgreSQL.
+- `mi-app-postgres-data` mantiene los datos de PostgreSQL bajo el directorio
+  de versión administrado por la imagen oficial de PostgreSQL 18.
 - `mi-app-redis-data` mantiene AOF y snapshots de Redis.
 - PostgreSQL se inicializa sólo con sus variables estándar; no se crean tablas
   ni scripts de negocio.

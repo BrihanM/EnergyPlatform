@@ -84,4 +84,14 @@ public final class Account {
         }
         return value;
     }
+
+    @Override
+    public boolean equals(Object other) {
+        return other instanceof Account account && id.equals(account.id);
+    }
+
+    @Override
+    public int hashCode() {
+        return id.hashCode();
+    }
 }

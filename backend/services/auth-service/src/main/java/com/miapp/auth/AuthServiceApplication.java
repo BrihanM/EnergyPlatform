@@ -2,6 +2,9 @@ package com.miapp.auth;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import com.miapp.auth.application.service.SessionProperties;
+import com.miapp.auth.infrastructure.config.RefreshTokenCookieProperties;
 
 /**
  * Punto de entrada del microservicio de autenticación.
@@ -11,6 +14,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
  * respetando la arquitectura hexagonal.</p>
  */
 @SpringBootApplication
+@EnableConfigurationProperties({SessionProperties.class, RefreshTokenCookieProperties.class})
 public class AuthServiceApplication {
 
     /**

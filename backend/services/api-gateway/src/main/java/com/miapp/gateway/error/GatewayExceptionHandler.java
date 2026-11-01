@@ -2,6 +2,7 @@ package com.miapp.gateway.error;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.miapp.gateway.correlation.CorrelationId;
+import org.jspecify.annotations.NonNull;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpStatus;
@@ -41,7 +42,8 @@ public class GatewayExceptionHandler implements WebExceptionHandler {
      * @return operación reactiva que escribe la respuesta o propaga el error
      */
     @Override
-    public Mono<Void> handle(ServerWebExchange exchange, Throwable exception) {
+    @NonNull
+    public Mono<Void> handle(ServerWebExchange exchange, @NonNull Throwable exception) {
         if (exchange.getResponse().isCommitted()) {
             return Mono.error(exception);
         }
@@ -66,8 +68,7 @@ public class GatewayExceptionHandler implements WebExceptionHandler {
         if (exception instanceof java.util.concurrent.TimeoutException) {
             return HttpStatus.GATEWAY_TIMEOUT.value();
         }
-        if (exception instanceof java.net.ConnectException
-                || exception instanceof java.io.IOException) {
+        if (exception instanceof java.io.IOException) {
             return HttpStatus.BAD_GATEWAY.value();
         }
         return HttpStatus.INTERNAL_SERVER_ERROR.value();
