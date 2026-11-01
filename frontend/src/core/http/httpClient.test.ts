@@ -1,16 +1,31 @@
+<<<<<<< Updated upstream
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { markSessionInvalidated, registerSessionHandlers, unregisterSessionHandlers } from '../auth/sessionRuntime';
 import { buildUrl, httpClient, normalizeHttpError } from './httpClient';
 import { HttpError } from './httpError';
+=======
+/**
+ * Test suite for HTTP client utilities.
+ * 
+ * Tests the following functionality:
+ * - URL building with query parameters
+ * - Error normalization from various payload formats
+ * - HTTP request execution with authentication headers
+ * - Fetch mock integration
+ */
+import { describe, expect, it, vi } from 'vitest'
+
+import { buildUrl, httpClient, normalizeHttpError } from './httpClient'
+>>>>>>> Stashed changes
 
 describe('buildUrl', () => {
   it('builds a gateway URL and appends query parameters', () => {
     expect(
       buildUrl('/api/v1/auth/login', { page: 1, include: 'profile' }),
-    ).toBe('http://localhost:8080/api/v1/auth/login?page=1&include=profile');
-  });
-});
+    ).toBe('http://localhost:8080/api/v1/auth/login?page=1&include=profile')
+  })
+})
 
 describe('normalizeHttpError', () => {
   it('normalizes backend error payloads', () => {
@@ -21,16 +36,16 @@ describe('normalizeHttpError', () => {
         correlationId: 'corr-123',
       },
       401,
-    );
+    )
 
     expect(error).toMatchObject({
       status: 401,
       code: 'AUTH_401',
       message: 'Invalid credentials',
       correlationId: 'corr-123',
-    });
-  });
-});
+    })
+  })
+})
 
 describe('httpClient.request', () => {
   afterEach(() => {
@@ -45,10 +60,11 @@ describe('httpClient.request', () => {
         status: 200,
         headers: { 'Content-Type': 'application/json' },
       }),
-    );
+    )
 
-    vi.stubGlobal('fetch', fetchMock);
+    vi.stubGlobal('fetch', fetchMock)
 
+<<<<<<< Updated upstream
     const response = await httpClient.post<{ success: boolean }>('/api/v1/auth/login', {
       body: {
         email: 'user@example.com',
@@ -184,3 +200,30 @@ describe('httpClient.request', () => {
     expect(clearSession).toHaveBeenCalledTimes(1);
   });
 });
+=======
+    try {
+      const response = await httpClient.post<{ success: boolean }>('/api/v1/auth/login', {
+        body: {
+          email: 'user@example.com',
+          password: 'secret',
+        },
+      })
+
+      expect(response).toEqual({ success: true })
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringContaining('/api/v1/auth/login'),
+        expect.objectContaining({
+          method: 'POST',
+          credentials: 'include',
+          headers: expect.any(Headers),
+        }),
+      )
+
+      const fetchOptions = fetchMock.mock.calls[0][1] as { headers: Headers }
+      expect(fetchOptions.headers.get('Content-Type')).toBe('application/json')
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
+})
+>>>>>>> Stashed changes

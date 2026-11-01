@@ -8,6 +8,16 @@ import type {
   QueryParamCollection,
 } from './types';
 
+/**
+ * Appends a query parameter to the URL search parameters.
+ * Handles arrays by appending multiple values for the same key.
+ * Skips null and undefined values.
+ * 
+ * @param {URLSearchParams} searchParams - The search parameters object to modify.
+ * @param {string} key - The parameter key.
+ * @param {QueryParamCollection} value - The parameter value(s).
+ * @returns {void}
+ */
 const appendQueryParam = (
   searchParams: URLSearchParams,
   key: string,
@@ -29,6 +39,18 @@ const appendQueryParam = (
   searchParams.append(key, String(value));
 };
 
+/**
+ * Constructs a complete URL with base URL, path, and query parameters.
+ * Automatically handles URL normalization and parameter serialization.
+ * 
+ * @template TResponse - The expected response type.
+ * @param {string} path - The API endpoint path or full URL.
+ * @param {Record<string, QueryParamCollection>} [params] - Query parameters to append to the URL.
+ * @returns {string} The complete, properly formatted URL.
+ * @example
+ * buildUrl('/users', { id: 123, status: 'active' })
+ * // Returns: 'http://localhost:8080/users?id=123&status=active'
+ */
 export const buildUrl = (
   path: string,
   params?: Record<string, QueryParamCollection>,
@@ -52,6 +74,14 @@ export const buildUrl = (
   return url.toString();
 };
 
+/**
+ * Parses the response body as JSON or plain text.
+ * Returns undefined for empty responses.
+ * 
+ * @template TResponse - The expected response type.
+ * @param {Response} response - The fetch Response object.
+ * @returns {Promise<TResponse | undefined>} The parsed response body.
+ */
 const parseResponseBody = async <TResponse>(response: Response): Promise<TResponse | undefined> => {
   const text = await response.text();
 
@@ -66,6 +96,13 @@ const parseResponseBody = async <TResponse>(response: Response): Promise<TRespon
   }
 };
 
+/**
+ * Extracts an error message from various payload formats.
+ * Handles plain strings, objects with message/details fields, and nested error objects.
+ * 
+ * @param {unknown} payload - The error payload from the server.
+ * @returns {string | undefined} The extracted error message or undefined.
+ */
 const extractErrorMessage = (payload: unknown): string | undefined => {
   if (typeof payload === 'string') {
     return payload;
@@ -100,6 +137,14 @@ const extractErrorMessage = (payload: unknown): string | undefined => {
   return undefined;
 };
 
+/**
+ * Normalizes an error payload into a structured HttpError object.
+ * Extracts status, code, message, and correlation ID from the error response.
+ * 
+ * @param {unknown} payload - The error response payload.
+ * @param {number} status - The HTTP status code.
+ * @returns {HttpError} A normalized HttpError instance.
+ */
 export const normalizeHttpError = (payload: unknown, status: number): HttpError => {
   const record = typeof payload === 'object' && payload !== null ? (payload as Record<string, unknown>) : {};
   const code = typeof record.code === 'string' ? record.code : undefined;
@@ -113,6 +158,19 @@ export const normalizeHttpError = (payload: unknown, status: number): HttpError 
   });
 };
 
+/**
+ * Executes an HTTP request with automatic auth header injection and error handling.
+ * Supports various body types and automatically sets appropriate Content-Type headers.
+ * 
+ * @template TResponse - The expected response type.
+ * @param {string} path - The API endpoint path or full URL.
+ * @param {HttpRequestOptions} [options] - Request configuration options.
+ * @returns {Promise<TResponse>} The parsed response data.
+ * @throws {HttpError} If the request fails with a non-2xx status.
+ * @example
+ * const data = await request<User>('/api/users/1');
+ * const created = await request<User>('/api/users', { method: 'POST', body: { name: 'John' } });
+ */
 const request = async <TResponse>(
   path: string,
   options: HttpRequestOptions = {},
@@ -195,6 +253,28 @@ const request = async <TResponse>(
   return payload as TResponse;
 };
 
+/**
+ * Main HTTP client interface providing methods for all common HTTP operations.
+ * Automatically injects authentication tokens, handles errors, and manages headers.
+ * 
+ * @typedef {Object} httpClient
+ * @property {Function} request - Generic request method accepting any HTTP method.
+ * @property {Function} get - Performs a GET request.
+ * @property {Function} post - Performs a POST request.
+ * @property {Function} put - Performs a PUT request.
+ * @property {Function} patch - Performs a PATCH request.
+ * @property {Function} delete - Performs a DELETE request.
+ * 
+ * @example
+ * // GET request
+ * const user = await httpClient.get<User>('/api/users/1');
+ * 
+ * // POST request with body
+ * const created = await httpClient.post<User>('/api/users', { body: { name: 'John' } });
+ * 
+ * // Request with query parameters
+ * const users = await httpClient.get<User[]>('/api/users', { params: { page: 1, limit: 10 } });
+ */
 export const httpClient = {
   request,
   get: <TResponse>(path: string, options: Omit<HttpRequestOptions, 'method' | 'body'> = {}) =>
