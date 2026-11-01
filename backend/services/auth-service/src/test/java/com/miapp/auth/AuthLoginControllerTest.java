@@ -2,7 +2,6 @@ package com.miapp.auth;
 
 import com.miapp.auth.application.port.in.LoginUseCase;
 import com.miapp.auth.application.result.LoginResult;
-import com.miapp.auth.domain.model.AccountStatus;
 import com.miapp.auth.infrastructure.adapter.in.web.AuthLoginController;
 import com.miapp.auth.infrastructure.adapter.in.web.RefreshTokenCookieManager;
 import org.junit.jupiter.api.Test;
