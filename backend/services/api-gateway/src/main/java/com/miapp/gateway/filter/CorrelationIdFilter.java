@@ -49,9 +49,7 @@ public class CorrelationIdFilter implements GlobalFilter, Ordered {
                 .request(request -> request.headers(headers -> headers.set(CorrelationId.HEADER_NAME, correlationId)))
                 .build();
         enrichedExchange.getResponse().getHeaders().set(CorrelationId.HEADER_NAME, correlationId);
-        return chain.filter(enrichedExchange)
-                .doFinally(signal -> enrichedExchange.getResponse().getHeaders()
-                        .set(CorrelationId.HEADER_NAME, correlationId));
+        return chain.filter(enrichedExchange);
     }
 
     /**

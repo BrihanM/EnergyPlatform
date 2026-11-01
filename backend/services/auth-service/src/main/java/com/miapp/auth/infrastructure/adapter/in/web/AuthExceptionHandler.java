@@ -9,6 +9,10 @@ import com.miapp.auth.domain.exception.RegistrationConflictException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -21,6 +25,8 @@ import java.time.Instant;
  */
 @RestControllerAdvice
 public class AuthExceptionHandler {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(AuthExceptionHandler.class);
 
     @ExceptionHandler({DuplicateUsernameException.class, DuplicateEmailException.class,
             RegistrationConflictException.class})
@@ -35,6 +41,18 @@ public class AuthExceptionHandler {
         String message = exception instanceof InvalidRegistrationException
                 ? exception.getMessage() : "Request data is invalid";
         return response(HttpStatus.BAD_REQUEST, "Bad Request", message, request);
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    ResponseEntity<ApiErrorResponse> handleInvalidBody(HttpServletRequest request) {
+        return response(HttpStatus.BAD_REQUEST, "Bad Request",
+                "Request data is invalid", request);
+    }
+
+    @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
+    ResponseEntity<ApiErrorResponse> handleUnsupportedMediaType(HttpServletRequest request) {
+        return response(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "Unsupported Media Type",
+                "Content-Type must be application/json", request);
     }
 
     @ExceptionHandler(InvalidCredentialsException.class)
@@ -56,7 +74,9 @@ public class AuthExceptionHandler {
     }
 
     @ExceptionHandler(Exception.class)
-    ResponseEntity<ApiErrorResponse> handleUnexpected(HttpServletRequest request) {
+    ResponseEntity<ApiErrorResponse> handleUnexpected(Exception exception, HttpServletRequest request) {
+        LOGGER.error("Unexpected auth-service error for {} {}",
+                request.getMethod(), request.getRequestURI(), exception);
         return response(HttpStatus.INTERNAL_SERVER_ERROR, "Internal Server Error",
                 "The request could not be completed", request);
     }
