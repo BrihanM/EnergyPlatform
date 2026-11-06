@@ -6,6 +6,7 @@ import com.miapp.auth.domain.exception.InvalidRegistrationException;
 import com.miapp.auth.domain.exception.InvalidCredentialsException;
 import com.miapp.auth.domain.exception.InvalidSessionException;
 import com.miapp.auth.domain.exception.RegistrationConflictException;
+import com.miapp.auth.domain.exception.InvalidRoleOperationException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
@@ -59,6 +60,16 @@ public class AuthExceptionHandler {
     ResponseEntity<ApiErrorResponse> handleInvalidCredentials(HttpServletRequest request) {
         return response(HttpStatus.UNAUTHORIZED, "Unauthorized",
                 "Credenciales inválidas.", request);
+    }
+
+    @ExceptionHandler(InvalidRoleOperationException.class)
+    ResponseEntity<ApiErrorResponse> handleRoleOperation(InvalidRoleOperationException exception,
+                                                         HttpServletRequest request) {
+        int status = "Administrator role required".equals(exception.getMessage())
+                ? HttpStatus.FORBIDDEN.value() : HttpStatus.BAD_REQUEST.value();
+        HttpStatus httpStatus = HttpStatus.valueOf(status);
+        return response(httpStatus, httpStatus == HttpStatus.FORBIDDEN ? "Forbidden" : "Bad Request",
+                exception.getMessage(), request);
     }
 
     @ExceptionHandler(InvalidSessionException.class)

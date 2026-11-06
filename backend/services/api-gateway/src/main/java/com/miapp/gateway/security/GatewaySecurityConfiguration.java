@@ -33,6 +33,7 @@ public class GatewaySecurityConfiguration {
     private static final String USER_ID = "X-Authenticated-User-Id";
     private static final String ACCOUNT_ID = "X-Authenticated-Account-Id";
     private static final String USERNAME = "X-Authenticated-Username";
+    private static final String ROLES = "X-Authenticated-Roles";
 
     /**
      * Exige autenticación en toda ruta no declarada pública.
@@ -72,6 +73,7 @@ public class GatewaySecurityConfiguration {
                         headers.remove(USER_ID);
                         headers.remove(ACCOUNT_ID);
                         headers.remove(USERNAME);
+                        headers.remove(ROLES);
                     }))
                     .build();
 
@@ -92,6 +94,7 @@ public class GatewaySecurityConfiguration {
                         .request(request -> request.headers(headers -> {
                             headers.set(USER_ID, identity.userId());
                             headers.set(USERNAME, identity.username());
+                            headers.set(ROLES, String.join(",", identity.roles().stream().sorted().toList()));
                         }))
                         .build();
                 var authentication = new UsernamePasswordAuthenticationToken(

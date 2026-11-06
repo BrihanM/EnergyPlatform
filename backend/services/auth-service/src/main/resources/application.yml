@@ -48,3 +48,5 @@ security:
       path: ${REFRESH_TOKEN_COOKIE_PATH:/api/v1/auth}
       domain: ${REFRESH_TOKEN_COOKIE_DOMAIN:}
       max-age: ${REFRESH_TOKEN_COOKIE_MAX_AGE:604800000}
+  rbac:
+    bootstrap-admin-username: ${RBAC_BOOTSTRAP_ADMIN_USERNAME:}

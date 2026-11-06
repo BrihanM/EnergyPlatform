@@ -144,3 +144,11 @@ Copy-Item .env.example .env # sólo si se requiere configuración local
 
 La ruta no requiere que Auth Service tenga endpoints implementados para
 arrancar; las solicitudes serán auditadas aunque el destino no esté disponible.
+# RBAC identity propagation
+
+After validating the JWT signature, issuer, expiry, UUID subject, username, and
+closed `roles` claim, the Gateway removes client-supplied identity headers and
+rebuilds `X-Authenticated-User-Id`, `X-Authenticated-Username`, and
+`X-Authenticated-Roles`. Downstream services must treat these headers as an
+internal transport contract only and must still enforce resource ownership.
+Requests without a valid token cannot establish identity or roles.

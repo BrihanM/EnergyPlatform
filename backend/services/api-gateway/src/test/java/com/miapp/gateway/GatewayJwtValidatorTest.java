@@ -42,6 +42,7 @@ class GatewayJwtValidatorTest {
 
         assertThat(identity.userId()).isEqualTo(userId.toString());
         assertThat(identity.username()).isEqualTo("brayan.marin");
+        assertThat(identity.roles()).containsExactly("NORMAL_USER");
     }
 
     @Test
@@ -87,6 +88,21 @@ class GatewayJwtValidatorTest {
                 .isInstanceOf(GatewayJwtValidator.JwtValidationException.class);
     }
 
+    @Test
+    void rejectsMissingRolesClaim() {
+        String token = Jwts.builder()
+                .subject(UUID.randomUUID().toString())
+                .issuer(ISSUER)
+                .issuedAt(new Date())
+                .expiration(Date.from(Instant.now().plusSeconds(900)))
+                .claim("username", "brayan.marin")
+                .signWith(key, Jwts.SIG.HS256)
+                .compact();
+
+        assertThatThrownBy(() -> validator.validate(token))
+                .isInstanceOf(GatewayJwtValidator.JwtValidationException.class);
+    }
+
     private String token(UUID userId, String issuer, Instant expiration, String username,
                          SecretKey signingKey) {
         return Jwts.builder()
@@ -95,6 +111,7 @@ class GatewayJwtValidatorTest {
                 .issuedAt(new Date())
                 .expiration(Date.from(expiration))
                 .claim("username", username)
+                .claim("roles", java.util.List.of("NORMAL_USER"))
                 .signWith(signingKey, Jwts.SIG.HS256)
                 .compact();
     }

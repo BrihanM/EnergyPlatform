@@ -56,3 +56,12 @@ No tiene reglas de negocio. La auditoría nunca registra contraseñas, tokens,
 credenciales ni datos sensibles.
 
 La comunicación futura usará contratos explícitos y mecanismos desacoplados. No se implementa comunicación entre servicios en esta fase.
+
+## RBAC
+
+`auth-service` owns role persistence and includes effective roles in JWTs.
+Gateway validates and sanitizes the role claim before propagating it as an
+internal header. Gateway authentication is not a replacement for authorization:
+each downstream service must enforce role permissions and resource ownership.
+Only the three official roles are accepted. See `RBAC.md` for the complete
+contract.

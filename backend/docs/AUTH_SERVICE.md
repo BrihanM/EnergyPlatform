@@ -7,6 +7,22 @@ utilizadas para acceder a la plataforma. Está organizado con arquitectura
 hexagonal: el caso de uso vive en `application`, las reglas y modelos puros en
 `domain`, y los adaptadores REST, JPA y de hashing en `infrastructure`.
 
+### RBAC
+
+Auth owns the normalized `roles` catalogue and `user_roles` assignments. The
+only functional roles are `NORMAL_USER`, `ADMIN`, and `SECURITY_AUDITOR`.
+Registration always assigns `NORMAL_USER`; the request cannot select a role.
+Role-management endpoints are under `/api/v1/admin` and require a trusted
+Gateway-provided `ADMIN` identity. Role changes are logged with actor and target
+UUIDs without credentials or tokens. Revoking the last active administrator is
+rejected.
+
+The `roles` claim is included in access JWTs. Refresh loads assignments again,
+so a role change is reflected in the next access token. `RBAC_BOOTSTRAP_ADMIN_USERNAME`
+may name an existing active account for one-time initial ADMIN assignment; it
+does not create accounts or credentials and is ignored once an active admin
+exists.
+
 ## Ejecución en Docker
 
 Auth Service se ejecuta internamente en Docker en el puerto `8081` y espera el

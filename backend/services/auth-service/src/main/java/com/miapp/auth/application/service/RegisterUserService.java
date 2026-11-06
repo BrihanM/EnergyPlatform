@@ -5,6 +5,7 @@ import com.miapp.auth.application.port.in.RegisterUserUseCase;
 import com.miapp.auth.application.port.out.AccountPersistencePort;
 import com.miapp.auth.application.port.out.PasswordHashingPort;
 import com.miapp.auth.application.port.out.UserPersistencePort;
+import com.miapp.auth.application.port.out.RolePersistencePort;
 import com.miapp.auth.application.result.RegisterUserResult;
 import com.miapp.auth.domain.exception.DuplicateEmailException;
 import com.miapp.auth.domain.exception.DuplicateUsernameException;
@@ -16,6 +17,7 @@ import com.miapp.auth.domain.model.User;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.beans.factory.annotation.Autowired;
 
 import java.util.Locale;
 
@@ -34,13 +36,23 @@ public class RegisterUserService implements RegisterUserUseCase {
     private final UserPersistencePort userPersistencePort;
     private final AccountPersistencePort accountPersistencePort;
     private final PasswordHashingPort passwordHashingPort;
+    private final RolePersistencePort rolePersistencePort;
 
     public RegisterUserService(UserPersistencePort userPersistencePort,
                                AccountPersistencePort accountPersistencePort,
                                PasswordHashingPort passwordHashingPort) {
+        this(userPersistencePort, accountPersistencePort, passwordHashingPort, null);
+    }
+
+    @Autowired
+    public RegisterUserService(UserPersistencePort userPersistencePort,
+                               AccountPersistencePort accountPersistencePort,
+                               PasswordHashingPort passwordHashingPort,
+                               RolePersistencePort rolePersistencePort) {
         this.userPersistencePort = userPersistencePort;
         this.accountPersistencePort = accountPersistencePort;
         this.passwordHashingPort = passwordHashingPort;
+        this.rolePersistencePort = rolePersistencePort;
     }
 
     @Override
@@ -71,6 +83,9 @@ public class RegisterUserService implements RegisterUserUseCase {
         try {
             userPersistencePort.save(user);
             Account savedAccount = accountPersistencePort.save(account);
+            if (rolePersistencePort != null) {
+                rolePersistencePort.assignRole(user.id(), user.id(), com.miapp.auth.domain.model.Role.NORMAL_USER);
+            }
             return new RegisterUserResult(user.id(), user.firstName(), user.lastName(),
                     savedAccount.username(), savedAccount.email(), savedAccount.status(),
                     savedAccount.createdAt());
