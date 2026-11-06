@@ -21,6 +21,7 @@ export interface AuthenticatedUser {
   email?: string
   /** The username of the user. */
   username?: string
+  roles?: string[]
 }
 
 /**
