@@ -23,7 +23,7 @@ public class EnergyTransactionController {
 
     @PostMapping
     public EnergyTransactionResponse purchase(@Valid @RequestBody PurchaseRequest request,
-                                               @RequestHeader("Idempotency-Key") String key,
+                                               @RequestHeader(value = "Idempotency-Key", required = false) String key,
                                                HttpServletRequest httpRequest) {
         EnergyTransaction transaction = service.purchase(
                 OfferIdentity.requireNormalUser(httpRequest), request.offerId(), key);
