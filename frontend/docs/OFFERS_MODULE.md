@@ -39,3 +39,8 @@ Loading, empty, API error, unavailable detail, pagination, and mutation states
 are represented explicitly. HU-23 is partially covered: offer marketplace and
 management UI are implemented, while transactions, history, and other future
 features remain pending.
+
+The market service source and gateway routes are absent from the current branch,
+so Offers has not been validated end-to-end in this checkout. See
+[Transactions module status](./TRANSACTIONS_MODULE.md) for the F15 blockers and
+story traceability.
