@@ -1,7 +1,7 @@
 # Business Flows
 
-These flows describe future behavior only. They are not implemented by this
-change.
+These flows describe planned behavior. The publication and consultation slice
+for offers is implemented by F12; transactions and later flows remain future work.
 
 ## Publication
 
@@ -16,10 +16,10 @@ change.
 
 ## Consultation
 
-Public or authenticated visibility is a pending product decision. The proposed
-query returns only active, non-expired offers, supports bounded pagination and
-sorting, and never exposes credentials or internal error details. A read does
-not reserve an offer.
+F12 exposes public visibility. The query returns only active, non-expired offers,
+supports bounded pagination, allow-listed sorting and numeric/date filters, and
+never exposes credentials or internal error details. A read does not reserve an
+offer.
 
 ## Atomic purchase
 

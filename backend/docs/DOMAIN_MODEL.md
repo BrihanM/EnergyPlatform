@@ -2,8 +2,9 @@
 
 ## Status and scope
 
-This document is a design specification. It does not create `energy-market-service`,
-database objects, endpoints, or business logic. Facts marked **Existing** come from
+This document is a design specification. The F12 offers slice now implements the
+`EnergyOffer` aggregate and its persistence/API boundary; later contexts remain
+design-only. Facts marked **Existing** come from
 the current repository; facts marked **Proposed** require implementation and review.
 
 The business context is a simulated prosumer market. No physical energy dispatch,
@@ -57,7 +58,7 @@ tokens into market records.
 | `id` | UUID | Aggregate identifier |
 | `sellerUserId` | UUID | FK/reference to `users.id`; seller cannot be buyer of own offer |
 | `energyQuantityKwh` | `NUMERIC(12,3)` | Positive, bounded by configured maximum |
-| `pricePerKwh` | `NUMERIC(12,4)` | Non-negative simulated price |
+| `pricePerKwh` | `NUMERIC(14,2)` | Positive simulated unit price |
 | `availableFrom`, `expiresAt` | `TIMESTAMPTZ` | `availableFrom < expiresAt` |
 | `status` | enum | `ACTIVE`, `RESERVED`, `SOLD`, `CANCELLED`, `EXPIRED` |
 | `publishedAt`, `updatedAt` | `TIMESTAMPTZ` | Server-generated timestamps |

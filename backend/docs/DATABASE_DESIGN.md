@@ -3,9 +3,9 @@
 ## Design status
 
 The database remains one PostgreSQL instance and one normalized relational
-database. The tables below are proposed; this phase creates no migration or
-table. Existing Auth tables are documented from Flyway migrations and remain
-owned by `auth-service`.
+database. The F12 `energy_market.energy_offers` table is implemented; later
+business tables remain proposed. Existing Auth tables are documented from
+Flyway migrations and remain owned by `auth-service`.
 
 ## Ownership and existing tables
 
@@ -22,7 +22,7 @@ account credentials. Auth must not be required to join every market query.
 
 | Table | Main columns | PK/FK and constraints |
 |---|---|---|
-| `energy_offers` | `id`, `seller_user_id`, `energy_quantity_kwh`, `price_per_kwh`, `available_from`, `expires_at`, `status`, `published_at`, `updated_at` | PK `id`; FK seller -> `users.id`; positive quantity; non-negative price; `available_from < expires_at`; enum check |
+| `energy_offers` | `id`, `seller_id`, `energy_amount_kwh`, `price_per_kwh`, `expires_at`, `status`, `created_at`, `updated_at`, `version` | **Implemented in F12**; PK `id`; FK seller -> `public.users.id`; positive quantity/price; enum and date checks |
 | `energy_transactions` | `id`, `offer_id`, `seller_user_id`, `buyer_user_id`, `quantity_kwh`, `price_per_kwh`, `total_amount`, `status`, `created_at`, `closed_at`, `idempotency_key` | PK `id`; FKs offer/users; positive quantity/total; seller != buyer; terminal `closed_at` check; unique idempotency scope |
 | `meter_devices` | `id`, `owner_user_id`, `device_identifier`, `credential_hash`, `status`, `registered_at` | PK `id`; FK owner -> `users.id`; unique device identifier; credential hash not null; status check |
 | `energy_readings` | `id`, `meter_device_id`, `generated_energy_kwh`, `surplus_energy_kwh`, `measured_at`, `received_at`, `validation_status` | PK `id`; FK device; non-negative values; surplus <= generated; status check; duplicate policy index/constraint |
@@ -30,7 +30,8 @@ account credentials. Auth must not be required to join every market query.
 | `audit_events` | `id`, nullable `user_id`, `event_type`, `occurred_at`, `source_ip`, `resource_type`, `resource_id`, `result`, `correlation_id`, safe `metadata` | PK `id`; optional FK user; no secrets; append-only policy |
 
 `NUMERIC` is required for energy and simulated money; Java implementations must
-use `BigDecimal`, never binary floating point. `TIMESTAMPTZ` maps to `Instant`.
+use `BigDecimal`, never binary floating point. F12 uses `NUMERIC(12,3)` for
+energy and `NUMERIC(14,2)` for unit price. `TIMESTAMPTZ` maps to `Instant`.
 UUID is consistent with the existing Auth identifiers.
 
 ## Recommended indexes

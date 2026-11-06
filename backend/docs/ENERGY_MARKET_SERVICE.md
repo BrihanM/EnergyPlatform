@@ -2,10 +2,11 @@
 
 ## Responsibility and scope
 
-`energy-market-service` owns the future energy-market bounded context:
+`energy-market-service` owns the energy-market bounded context:
 offers, transactions, authenticated meter readings, simulated operator
 verification, and business audit records. F11 creates infrastructure only; no
-business entity, CRUD endpoint, or transaction workflow is implemented.
+business entity, transaction workflow is implemented. F12 adds the persisted EnergyOffer
+publication and consultation slice.
 
 The modules remain inside one service because these capabilities share market
 invariants and a simulated workflow. They can be extracted later if their
@@ -29,9 +30,8 @@ application dependencies on infrastructure.
 
 ## Runtime and Gateway
 
-The service listens on port `8082` by default. The Gateway reserves
-`/api/v1/market/**` and forwards it to `ENERGY_MARKET_SERVICE_URI`; F11 adds no
-business route below that base. In Compose the destination is
+The service listens on port `8082` by default. The Gateway forwards `/api/v1/offers/**` and the compatibility
+`/api/v1/market/**` route to `ENERGY_MARKET_SERVICE_URI`. In Compose the destination is
 `http://energy-market-service:8082`.
 
 Only the Gateway is published to the host. Energy Market is attached only to
@@ -59,12 +59,13 @@ the `energy_market` schema. Auth remains owner of the public schema and its
 - schema: `ENERGY_MARKET_DB_SCHEMA` (default `energy_market`)
 - migrations: `classpath:db/migration`
 - independent history: `energy_market.flyway_schema_history`
-- `ddl-auto` is not used; no JPA entity model exists in F11
+- `ddl-auto` is not used; F12 uses JDBC persistence rather than JPA
 
-`V1__initialize_energy_market_schema.sql` is intentionally a no-op migration.
-Flyway creates the schema and records ownership without creating business
-tables. Future phases add only Energy Market tables and must not update or
-delete Auth-owned rows.
+`V1__initialize_energy_market_schema.sql` initializes the schema and
+`V2__create_energy_offers.sql` creates the F12 `energy_offers` table with a
+foreign key to `public.users`, lifecycle checks, indexes, and an optimistic
+locking version. Future phases add only Energy Market tables and must not update
+or delete Auth-owned rows.
 
 ## Configuration
 
@@ -101,8 +102,12 @@ device credentials.
 - `EnergyMarketServiceApplicationTests` verifies Spring context startup with a
   test profile.
 - `PostgresMigrationIntegrationTest` uses PostgreSQL Testcontainers when Docker
-  is available and verifies the isolated schema/history and absence of
-  business tables.
+  is available and verifies the isolated schema/history and offer table.
+- `EnergyOfferDomainTest` verifies aggregate invariants and terminal states.
+- `EnergyOfferControllerAuthorizationTest` verifies the role boundary for
+  write operations.
+- Additional repository/API integration coverage should be expanded with the
+  full CRUD and ownership scenarios before future transaction work.
 
 Run from `backend`:
 

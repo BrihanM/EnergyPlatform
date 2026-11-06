@@ -12,6 +12,10 @@ spring:
               uri: http://localhost:8082
               predicates:
                 - Path=/api/v1/market/**
+            - id: energy-offers-service
+              uri: http://localhost:8082
+              predicates:
+                - Path=/api/v1/offers/**
 
 security:
   jwt:

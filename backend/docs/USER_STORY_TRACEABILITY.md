@@ -1,10 +1,10 @@
 # User Story Traceability
 
 The sprint allocation below follows the eight-sprint organization supplied for
-the project. Exact endpoint names are proposed and must be confirmed before
-implementation. F01-F08 authentication work is recorded as implemented only
-where it is evidenced by the current code and tests; future stories remain
-pending.
+the project. F01-F08 authentication and the F10 RBAC work are recorded as implemented only
+where evidenced by current code and tests. F12 offer stories are marked
+implemented only for the validated backend scope; frontend and transaction work
+remain pending.
 
 | HU | Module | Entities | Future endpoint/feature | Sprint | Dependencies | Technical status |
 |---|---|---|---|---:|---|---|
@@ -16,9 +16,9 @@ pending.
 | HU-06 | Auth/Gateway | Account, future Role | Role claims and route authorization | 2 | Approved RBAC model | Pending; no role model currently present |
 | HU-07 | Auth/Market | Request DTOs, domain entities | Boundary and domain validation | 3 | HU-06, market service | Pending |
 | HU-08 | Gateway/Infrastructure | Rate-limit keys | Gateway/API rate limiting | 3 | Redis, policy | Pending |
-| HU-09 | Market/offers | EnergyOffer | `POST /api/v1/market/offers` | 4 | HU-06, DB design | Pending |
-| HU-10 | Market/offers | EnergyOffer | `GET /api/v1/market/offers` | 4 | HU-09 | Pending |
-| HU-11 | Market/offers | EnergyOffer | `PATCH`/`DELETE` owner offer | 4 | HU-09, lifecycle rules | Pending |
+| HU-09 | Market/offers | EnergyOffer | `POST /api/v1/offers` | 4 | HU-06, DB design | Implemented/validated in F12 backend |
+| HU-10 | Market/offers | EnergyOffer | `GET /api/v1/offers`, `GET /api/v1/offers/{id}`, `/me` | 4 | HU-09 | Implemented/validated in F12 backend |
+| HU-11 | Market/offers | EnergyOffer | `PUT`/`DELETE /api/v1/offers/{id}` owner offer | 4 | HU-09, lifecycle rules | Implemented/validated in F12 backend |
 | HU-12 | Market/transactions | Offer, Transaction | `POST /api/v1/market/transactions` | 5 | Atomic locking, HU-09 | Pending |
 | HU-13 | Market/verification | Transaction, Verification | verification/closure workflow | 5 | HU-12, simulator | Pending |
 | HU-14 | DevSecOps | Build dependencies | Dependency scan pipeline | 6 | CI policy | Pending |
