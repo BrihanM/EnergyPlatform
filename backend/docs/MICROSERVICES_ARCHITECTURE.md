@@ -2,7 +2,8 @@
 
 ## Current baseline
 
-The repository is a Maven monorepo with `api-gateway` and `auth-service`.
+The repository is a Maven monorepo with `api-gateway`, `auth-service`, and the
+infrastructure-only `energy-market-service`.
 Frontend traffic enters the Gateway, which routes internally, applies CORS,
 correlation IDs, security headers, and validates the JWT signature, issuer,
 expiry, UUID `sub`, and `username`. Auth owns registration, login, refresh
@@ -19,7 +20,7 @@ frontend
    |
 api-gateway
    |-- /api/v1/auth/**  -> auth-service
-   |-- /api/v1/market/** -> energy-market-service (future)
+   |-- /api/v1/market/** -> energy-market-service
    |-- perimeter controls, correlation, technical audit
    |
    +-- auth-service
@@ -107,8 +108,10 @@ records so account removal cannot erase history. This arrangement requires:
 3. Backward-compatible migrations and deployment ordering.
 4. No ORM relationship graph crossing service boundaries; use UUID references.
 
-The migration coordination mechanism is a pending decision; no migration is
-created here.
+F11 resolves this for the initial boundary with schema ownership: Auth keeps
+the public schema and history, while Energy Market uses `energy_market` and
+its own `flyway_schema_history`. Future cross-schema foreign keys require an
+explicit backward-compatible migration review and deployment order.
 
 ## Error, observability, and security contracts
 
@@ -119,10 +122,15 @@ SQL or credentials. All business state transitions emit an allow-listed audit
 event. Rate limiting can use Redis later, but authorization remains based on
 validated identity and explicit role claims/lookup.
 
+Energy Market currently reserves the `/api/v1/market/**` route and owns the
+`energy_market` PostgreSQL schema with an independent Flyway history. It is
+internal-only in Compose and does not expose business endpoints in F11. See
+`ENERGY_MARKET_SERVICE.md` for its operational contract.
+
 ## Implementation sequencing (future)
 
 1. Agree on roles and the shared Flyway policy.
-2. Create the service skeleton and domain tests without endpoints.
+2. Create the service skeleton and domain tests without endpoints. (Done in F11.)
 3. Add migrations and persistence adapters.
 4. Implement offer lifecycle and read-only listing.
 5. Implement atomic acquisition and transaction history.

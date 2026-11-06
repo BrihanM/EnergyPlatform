@@ -1,6 +1,9 @@
 # Mi App Backend
 
-Repositorio Maven multi-módulo para los microservicios de Mi App. La solución inicia con `api-gateway` y `auth-service`; cada aplicación se construye y despliega de forma independiente.
+Repositorio Maven multi-módulo para los microservicios de Mi App. La solución
+incluye `api-gateway`, `auth-service` y la infraestructura inicial de
+`energy-market-service`; cada aplicación se construye y despliega de forma
+independiente.
 
 ## Requisitos
 
@@ -32,7 +35,9 @@ docker compose up --build
 ```
 
 El único puerto publicado es el Gateway en `http://localhost:8080`.
-`auth-service`, PostgreSQL y Redis sólo son accesibles en la red Docker interna.
+`auth-service`, `energy-market-service`, PostgreSQL y Redis sólo son accesibles
+en la red Docker interna. Energy Market reserva `/api/v1/market/**`, pero no
+expone endpoints de negocio en esta fase.
 Los health checks de Compose esperan a PostgreSQL y a Auth Service antes de
 iniciar el siguiente servicio. Para validar el build localmente:
 
@@ -47,4 +52,4 @@ protegida -> `refresh` (rotación) -> `logout`. La ruta técnica protegida
 del JWT y `X-Correlation-ID` sin introducir lógica de negocio.
 
 Consulta `docs/` para las decisiones y convenciones obligatorias, y
-`docs/API_GATEWAY.md` para su operación.
+`docs/API_GATEWAY.md` y `docs/ENERGY_MARKET_SERVICE.md` para su operación.

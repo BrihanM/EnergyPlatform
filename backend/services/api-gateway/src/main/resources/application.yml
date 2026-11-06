@@ -15,6 +15,10 @@ spring:
               uri: ${AUTH_SERVICE_URI:http://localhost:8081}
               predicates:
                 - Path=/api/v1/integration/**
+            - id: energy-market-service
+              uri: ${ENERGY_MARKET_SERVICE_URI:http://localhost:8082}
+              predicates:
+                - Path=/api/v1/market/**
           globalcors:
             add-to-simple-url-handler-mapping: true
             cors-configurations:
