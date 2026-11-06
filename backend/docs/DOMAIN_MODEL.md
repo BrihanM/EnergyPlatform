@@ -194,3 +194,9 @@ the market service, except for the final audit ownership decision. A shared
 PostgreSQL database makes these physical FKs enforceable but creates deployment,
 migration, and schema coordination coupling; the services must still respect
 write ownership.
+
+## F14 implementation status
+
+`EnergyTransaction` and `OperatorVerification` are implemented inside the
+energy-market service with immutable economic snapshots, PostgreSQL locking,
+persistent idempotency, and synchronous deterministic simulation.

@@ -1,7 +1,8 @@
 # Business Flows
 
-These flows describe planned behavior. The publication and consultation slice
-for offers is implemented by F12; transactions and later flows remain future work.
+These flows describe current behavior. Publication and consultation are
+implemented by F12; automatic transactions and verification are implemented by
+F14.
 
 ## Publication
 
@@ -31,8 +32,10 @@ offer.
 6. It calculates the total from the stored unit price using `BigDecimal`.
 7. It inserts a `PENDING_VERIFICATION` transaction containing seller, buyer,
    quantity, unit price, and total snapshots.
-8. It changes the offer to `SOLD` for the initial full-acquisition scope.
-9. It commits and publishes an audit event. Any error rolls back both writes.
+8. It runs the deterministic transfer simulator and persists operator verification.
+9. It confirms the transaction and changes the offer to `SOLD`, or rejects it and
+   returns the offer to `ACTIVE`/`EXPIRED`.
+10. It commits. Any technical error rolls back all writes.
 
 Two concurrent buyers cannot both acquire the row: one transaction obtains the
 row lock and commits `SOLD`; the other rechecks status and receives a conflict.

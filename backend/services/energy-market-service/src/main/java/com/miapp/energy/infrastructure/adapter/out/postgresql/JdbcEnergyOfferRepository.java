@@ -96,6 +96,29 @@ public class JdbcEnergyOfferRepository implements EnergyOfferRepository {
                 """, Map.of("id", offerId));
     }
 
+    @Override
+    public EnergyOffer findForPurchase(UUID offerId) {
+        return jdbc.query("SELECT " + COLUMNS
+                        + " FROM energy_market.energy_offers WHERE id = :id FOR UPDATE",
+                Map.of("id", offerId), this::map).stream().findFirst()
+                .orElseThrow(() -> new EnergyOfferDomainException("Offer was not found"));
+    }
+
+    @Override
+    public EnergyOffer setPurchaseStatus(UUID offerId, EnergyOfferStatus status) {
+        int changed = jdbc.update("""
+                UPDATE energy_market.energy_offers
+                   SET status = :status, updated_at = CURRENT_TIMESTAMP, version = version + 1
+                 WHERE id = :id
+                """, new MapSqlParameterSource().addValue("id", offerId)
+                .addValue("status", status.name()));
+        if (changed != 1) {
+            throw new EnergyOfferDomainException("Offer was not found");
+        }
+        return findById(offerId).orElseThrow(() ->
+                new EnergyOfferDomainException("Offer was not found"));
+    }
+
     private PageResult<EnergyOffer> find(OfferQuery query, UUID sellerId, boolean available) {
         MapSqlParameterSource parameters = new MapSqlParameterSource()
                 .addValue("limit", query.size()).addValue("offset", query.page() * query.size());

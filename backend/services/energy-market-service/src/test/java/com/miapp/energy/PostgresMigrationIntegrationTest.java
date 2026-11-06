@@ -80,12 +80,12 @@ class PostgresMigrationIntegrationTest {
                 where success = true
                 order by installed_rank desc
                 limit 1
-                """, String.class)).isEqualTo("2");
+                """, String.class)).isEqualTo("3");
         assertThat(jdbcTemplate.queryForObject("""
                 select count(*) from information_schema.tables
                 where table_schema = 'energy_market'
                   and table_name not like 'flyway_schema_history'
-                """, Integer.class)).isEqualTo(1);
+                """, Integer.class)).isEqualTo(4);
     }
 
     @Test

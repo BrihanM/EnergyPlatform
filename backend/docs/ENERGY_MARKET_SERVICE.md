@@ -61,11 +61,12 @@ the `energy_market` schema. Auth remains owner of the public schema and its
 - independent history: `energy_market.flyway_schema_history`
 - `ddl-auto` is not used; F12 uses JDBC persistence rather than JPA
 
-`V1__initialize_energy_market_schema.sql` initializes the schema and
+`V1__initialize_energy_market_schema.sql` initializes the schema,
 `V2__create_energy_offers.sql` creates the F12 `energy_offers` table with a
 foreign key to `public.users`, lifecycle checks, indexes, and an optimistic
-locking version. Future phases add only Energy Market tables and must not update
-or delete Auth-owned rows.
+locking version, and `V3__create_energy_transactions.sql` creates transaction,
+verification, and idempotency tables. Future phases add only Energy Market
+tables and must not update or delete Auth-owned rows.
 
 ## Configuration
 
@@ -79,6 +80,7 @@ Important variables are documented in `.env.example`:
 | `ENERGY_MARKET_DB_SCHEMA` | `energy_market` | Owned PostgreSQL schema |
 | `ENERGY_MARKET_FLYWAY_ENABLED` | `true` | Own Flyway lifecycle |
 | `ENERGY_MARKET_LOG_LEVEL` | `INFO` | Service log level |
+| `ENERGY_MARKET_SIMULATION_MODE` | `SUCCESS` | Local simulation mode: `SUCCESS`, `REJECT`, or `RULE_BASED` |
 | `ENERGY_MARKET_SERVICE_URI` | `http://localhost:8082` | Gateway local destination |
 
 No secrets are committed. Compose overrides the JDBC URL and Gateway URI with
@@ -106,8 +108,8 @@ device credentials.
 - `EnergyOfferDomainTest` verifies aggregate invariants and terminal states.
 - `EnergyOfferControllerAuthorizationTest` verifies the role boundary for
   write operations.
-- Additional repository/API integration coverage should be expanded with the
-  full CRUD and ownership scenarios before future transaction work.
+- `EnergyTransactionDomainTest` verifies money snapshots, precision, and
+  self-purchase rejection.
 
 Run from `backend`:
 

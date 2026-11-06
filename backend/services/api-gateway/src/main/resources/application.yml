@@ -23,6 +23,10 @@ spring:
               uri: ${ENERGY_MARKET_SERVICE_URI:http://localhost:8082}
               predicates:
                 - Path=/api/v1/offers/**
+            - id: energy-transactions-service
+              uri: ${ENERGY_MARKET_SERVICE_URI:http://localhost:8082}
+              predicates:
+                - Path=/api/v1/transactions/**
           globalcors:
             add-to-simple-url-handler-mapping: true
             cors-configurations:

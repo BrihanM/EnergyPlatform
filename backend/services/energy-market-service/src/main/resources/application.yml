@@ -37,3 +37,6 @@ logging:
     root: ${ENERGY_MARKET_LOG_LEVEL:INFO}
     com.miapp.energy: ${ENERGY_MARKET_LOG_LEVEL:INFO}
 
+energy-market:
+  simulation:
+    mode: ${ENERGY_MARKET_SIMULATION_MODE:SUCCESS}

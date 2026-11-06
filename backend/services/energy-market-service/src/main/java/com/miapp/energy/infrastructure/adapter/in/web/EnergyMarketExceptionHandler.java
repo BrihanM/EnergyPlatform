@@ -1,6 +1,7 @@
 package com.miapp.energy.infrastructure.adapter.in.web;
 
 import com.miapp.energy.domain.exception.EnergyOfferDomainException;
+import com.miapp.energy.domain.exception.EnergyTransactionDomainException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -23,7 +24,22 @@ public class EnergyMarketExceptionHandler {
             case "NORMAL_USER role is required" -> HttpStatus.FORBIDDEN;
             case "Only active offers can be modified",
                  "Only active offers can be cancelled",
-                 "Offer changed or is no longer editable" -> HttpStatus.CONFLICT;
+                 "Offer changed or is no longer editable",
+                 "Offer is no longer available",
+                 "Offer is expired" -> HttpStatus.CONFLICT;
+            default -> HttpStatus.BAD_REQUEST;
+        };
+        return response(status, exception.getMessage(), request);
+    }
+
+    @ExceptionHandler(EnergyTransactionDomainException.class)
+    ResponseEntity<ApiErrorResponse> handleTransaction(EnergyTransactionDomainException exception,
+                                                       HttpServletRequest request) {
+        HttpStatus status = switch (exception.getMessage()) {
+            case "Transaction was not found" -> HttpStatus.NOT_FOUND;
+            case "Idempotency key was used for another offer",
+                 "Idempotency conflict", "Offer is no longer available",
+                 "Offer is expired" -> HttpStatus.CONFLICT;
             default -> HttpStatus.BAD_REQUEST;
         };
         return response(status, exception.getMessage(), request);

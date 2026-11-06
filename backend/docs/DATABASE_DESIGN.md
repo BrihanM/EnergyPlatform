@@ -18,15 +18,16 @@ Flyway migrations and remain owned by `auth-service`.
 The market service references `users.id`; it never duplicates user names or
 account credentials. Auth must not be required to join every market query.
 
-## Proposed tables
+## Tables
 
 | Table | Main columns | PK/FK and constraints |
 |---|---|---|
 | `energy_offers` | `id`, `seller_id`, `energy_amount_kwh`, `price_per_kwh`, `expires_at`, `status`, `created_at`, `updated_at`, `version` | **Implemented in F12**; PK `id`; FK seller -> `public.users.id`; positive quantity/price; enum and date checks |
-| `energy_transactions` | `id`, `offer_id`, `seller_user_id`, `buyer_user_id`, `quantity_kwh`, `price_per_kwh`, `total_amount`, `status`, `created_at`, `closed_at`, `idempotency_key` | PK `id`; FKs offer/users; positive quantity/total; seller != buyer; terminal `closed_at` check; unique idempotency scope |
+| `energy_transactions` | `id`, `offer_id`, `seller_id`, `buyer_id`, `energy_amount_kwh`, `price_per_kwh`, `total_amount`, `status`, `created_at`, `completed_at`, `idempotency_key` | **Implemented in F14**; PK/FKs; positive values; seller != buyer; COP check; unique buyer/key |
 | `meter_devices` | `id`, `owner_user_id`, `device_identifier`, `credential_hash`, `status`, `registered_at` | PK `id`; FK owner -> `users.id`; unique device identifier; credential hash not null; status check |
 | `energy_readings` | `id`, `meter_device_id`, `generated_energy_kwh`, `surplus_energy_kwh`, `measured_at`, `received_at`, `validation_status` | PK `id`; FK device; non-negative values; surplus <= generated; status check; duplicate policy index/constraint |
-| `operator_verifications` | `id`, `transaction_id`, `result`, `verified_at`, `reason`, `simulation_reference` | PK `id`; FK transaction; result check; reference required; uniqueness if one verification per transaction |
+| `operator_verifications` | `id`, `transaction_id`, `result`, `verified_at`, `reason`, `simulation_reference`, `metadata` | **Implemented in F14**; one verification per transaction and FK to transaction |
+| `transaction_idempotency_keys` | `buyer_id`, `idempotency_key`, `offer_id`, `transaction_id`, `created_at` | **Implemented in F14**; composite PK and FK constraints |
 | `audit_events` | `id`, nullable `user_id`, `event_type`, `occurred_at`, `source_ip`, `resource_type`, `resource_id`, `result`, `correlation_id`, safe `metadata` | PK `id`; optional FK user; no secrets; append-only policy |
 
 `NUMERIC` is required for energy and simulated money; Java implementations must
@@ -57,7 +58,7 @@ policy. Offers and transactions must not disappear when an account is disabled.
 Devices can be revoked; readings and audit events are retained for traceability.
 No cascade from a user deletion is recommended in this testbed.
 
-## Atomic acquisition
+## Atomic acquisition (implemented in F14)
 
 The future repository adapter must execute acquisition in one PostgreSQL
 transaction:
@@ -65,10 +66,11 @@ transaction:
 1. Lock the target offer row with `SELECT ... FOR UPDATE`.
 2. Re-read status and expiry under the lock.
 3. Verify buyer identity and seller/buyer constraint.
-4. Insert the immutable transaction snapshot.
-5. Move the offer to `SOLD` (or `RESERVED` only if a separate reservation
-   protocol is approved).
-6. Commit; any failure rolls back both rows.
+4. Claim the persistent buyer/key idempotency row.
+5. Move the offer to `RESERVED` and insert the immutable transaction snapshot.
+6. Run local simulation, persist verification, and move to `SOLD`, `ACTIVE`, or
+   `EXPIRED`.
+7. Commit; any technical failure rolls back the complete operation.
 
 An equivalent guarded update (`WHERE status = 'ACTIVE'`) may be used, but the
 implementation must verify the affected-row count. A unique idempotency key
