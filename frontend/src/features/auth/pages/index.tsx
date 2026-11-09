@@ -64,6 +64,7 @@ export function LoginPage(): ReactElement {
           id: response.user.id,
           email: response.user.email,
           username: response.user.username,
+          roles: response.roles,
         },
       });
 

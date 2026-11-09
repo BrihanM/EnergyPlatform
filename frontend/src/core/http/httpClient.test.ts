@@ -1,47 +1,22 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest'
+import { buildUrl, httpClient, normalizeHttpError } from './httpClient'
 
-import { buildUrl, httpClient, normalizeHttpError } from './httpClient';
+describe('httpClient', () => {
+  it('builds gateway URLs with query parameters', () => {
+    expect(buildUrl('/api/v1/offers', { page: 1, size: 20 }))
+      .toBe('http://localhost:8080/api/v1/offers?page=1&size=20')
+  })
 
-describe('buildUrl', () => {
-  it('builds a gateway URL and appends query parameters', () => {
-    expect(
-      buildUrl('/api/v1/auth/login', { page: 1, include: 'profile' }),
-    ).toBe('http://localhost:8080/api/v1/auth/login?page=1&include=profile');
-  });
-});
+  it('normalizes safe backend error envelopes', () => {
+    expect(normalizeHttpError({ code: 'OFFER_409', message: 'Offer is no longer editable' }, 409))
+      .toMatchObject({ status: 409, code: 'OFFER_409', message: 'Offer is no longer editable' })
+  })
 
-describe('normalizeHttpError', () => {
-  it('normalizes backend error payloads', () => {
-    const error = normalizeHttpError(
-      {
-        code: 'AUTH_401',
-        message: 'Invalid credentials',
-        correlationId: 'corr-123',
-      },
-      401,
-    );
-
-    expect(error).toMatchObject({
-      status: 401,
-      code: 'AUTH_401',
-      message: 'Invalid credentials',
-      correlationId: 'corr-123',
-    });
-  });
-});
-
-describe('httpClient.request', () => {
-  it('sends credentials and JSON payloads to the API Gateway', async () => {
-    const fetchMock = vi.fn().mockResolvedValue(
-      new Response(JSON.stringify({ success: true }), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      }),
-    );
-
-    vi.stubGlobal('fetch', fetchMock);
-
+  it('sends credentials and JSON payloads', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ ok: true }), { status: 200 }))
+    vi.stubGlobal('fetch', fetchMock)
     try {
+<<<<<<< HEAD
       const response = await httpClient.post<{ success: boolean }>('/api/v1/auth/login', {
         body: {
           email: 'user@example.com',
@@ -59,9 +34,16 @@ describe('httpClient.request', () => {
           headers: expect.any(Headers),
         }),
       );
+=======
+      await expect(httpClient.post('/api/v1/offers', { body: { energyAmountKwh: '1.000' } })).resolves.toEqual({ ok: true })
+      const options = fetchMock.mock.calls[0][1] as { headers: Headers; credentials: string }
+      expect(options.credentials).toBe('include')
+      expect(options.headers.get('Content-Type')).toBe('application/json')
+>>>>>>> develop-f
     } finally {
-      vi.unstubAllGlobals();
+      vi.unstubAllGlobals()
     }
+<<<<<<< HEAD
 =======
     expect(response).toEqual({ success: true });
     expect(fetchMock).toHaveBeenCalledWith(
@@ -195,3 +177,7 @@ describe('httpClient.request', () => {
 >>>>>>> Stashed changes
   });
 });
+=======
+  })
+})
+>>>>>>> develop-f

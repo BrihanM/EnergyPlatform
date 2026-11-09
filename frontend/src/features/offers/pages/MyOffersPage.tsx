@@ -1,0 +1,12 @@
+import { useState, type ReactElement } from 'react'
+import { useAuth } from '../../../core/auth'
+import { offersService } from '../services/offersService'
+import { useMyOffers } from '../hooks/useOffers'
+import { OfferList } from '../components/OfferList'
+import { OfferForm } from '../components/OfferForm'
+import type { EnergyOffer } from '../types/offer.types'
+export function MyOffersPage({ navigate }: { navigate: (path: string) => void }): ReactElement {
+  const { user } = useAuth(); const [status, setStatus] = useState(''); const { result, loading, error, reload } = useMyOffers(status || undefined); const [editing, setEditing] = useState<EnergyOffer | null>(null); const [busy, setBusy] = useState(false); const [message, setMessage] = useState<string | null>(null)
+  const run = async (action: () => Promise<unknown>, success: string) => { setBusy(true); setMessage(null); try { await action(); setEditing(null); setMessage(success); await reload() } catch (caught) { setMessage(caught instanceof Error ? caught.message : 'The operation could not be completed.') } finally { setBusy(false) } }
+  return <section><div className="page-heading"><div><p className="eyebrow">Account</p><h1>My offers</h1><p className="muted">Offers owned by {user?.username ?? 'you'}.</p></div><select value={status} onChange={(event) => setStatus(event.target.value)}><option value="">All statuses</option>{['ACTIVE','RESERVED','SOLD','CANCELLED','EXPIRED'].map((value) => <option key={value}>{value}</option>)}</select></div>{message && <p className="state-message">{message}</p>}{loading && <p className="state-message">Loading your offers...</p>}{Boolean(error) && <p className="error-message">Unable to load your offers.</p>}{editing && <div className="panel"><h2>Edit offer</h2><OfferForm initialValue={editing} submitLabel="Save changes" disabled={busy} onSubmit={(payload) => run(() => offersService.update(editing.id, payload), 'Offer updated.')} /></div>}{result && <OfferList offers={result.content} onSelect={(offer) => navigate(`/offers/${offer.id}`)} renderActions={(offer) => offer.status === 'ACTIVE' ? <div className="card-actions"><button onClick={() => setEditing(offer)}>Edit</button><button className="danger-button" disabled={busy} onClick={() => { if (window.confirm('Cancel this offer? It will remain in history as CANCELLED.')) void run(() => offersService.cancel(offer.id), 'Offer cancelled.') }}>Cancel</button></div> : <></>} />}</section>
+}
