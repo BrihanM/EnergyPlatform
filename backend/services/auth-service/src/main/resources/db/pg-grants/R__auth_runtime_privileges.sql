@@ -17,9 +17,13 @@ BEGIN
     EXECUTE format('REVOKE ALL ON public.users, public.accounts, public.sessions, public.roles, public.user_roles, public.rotated_refresh_token_history, public.auth_audit_events, public.flyway_schema_history FROM PUBLIC, %I, %I, %I',
                    runtime_role, market_runtime, market_owner);
     EXECUTE format('GRANT SELECT, INSERT ON public.users TO %I', runtime_role);
+    -- Required by INSERT ... ON CONFLICT DO UPDATE in UserPersistenceAdapter; limited to the columns that upsert updates.
+    EXECUTE format('GRANT UPDATE (first_name_enc, last_name_enc, updated_at) ON public.users TO %I', runtime_role);
     EXECUTE format('GRANT SELECT, INSERT, UPDATE ON public.accounts, public.sessions TO %I', runtime_role);
     EXECUTE format('GRANT SELECT, UPDATE ON public.roles TO %I', runtime_role);
     EXECUTE format('GRANT SELECT, INSERT, DELETE ON public.user_roles, public.rotated_refresh_token_history TO %I', runtime_role);
+    -- Hibernate merges an existing role assignment with UPDATE on assigned_at only (repeat ADMIN/AUDITOR grants).
+    EXECUTE format('GRANT UPDATE (assigned_at) ON public.user_roles TO %I', runtime_role);
     EXECUTE format('GRANT SELECT, INSERT ON public.auth_audit_events TO %I', runtime_role);
     EXECUTE format('GRANT USAGE ON SCHEMA public TO %I', market_owner);
     EXECUTE format('GRANT REFERENCES (id) ON public.users TO %I', market_owner);

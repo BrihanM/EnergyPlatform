@@ -68,7 +68,7 @@ security:
 dev:
   seed:
     # Development/demo only. Disabled by default; never enable in production.
-    enabled: ${DEV_SEED_ENABLED:true}
+    enabled: ${DEV_SEED_ENABLED:false}
     admin-username: ${SEED_DEMO_ADMIN_USERNAME:demo-admin}
     admin-email: ${SEED_DEMO_ADMIN_EMAIL:demo-admin@example.test}
     admin-password: ${SEED_DEMO_PASSWORD:demo-password}

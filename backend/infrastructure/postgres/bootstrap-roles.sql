@@ -61,4 +61,6 @@ SELECT format('GRANT USAGE ON SCHEMA public TO %I', :'auth_runtime') \gexec
 SELECT format('CREATE SCHEMA energy_market AUTHORIZATION %I', :'market_owner')
 WHERE NOT EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = 'energy_market') \gexec
 SELECT format('GRANT USAGE ON SCHEMA energy_market TO %I', :'market_runtime') \gexec
+-- Created here as superuser so the Auth owner does not need database-level CREATE; V8 is then a no-op for the extension.
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
 COMMIT;
