@@ -22,6 +22,13 @@ spring:
       authRuntimeRole: ${AUTH_DB_USERNAME:mi_app}
       marketMigrationRole: ${ENERGY_MARKET_FLYWAY_USERNAME:mi_app}
       marketRuntimeRole: ${ENERGY_MARKET_DB_USERNAME:mi_app}
+      # Sin valor por defecto: si falta AUTH_PII_ENCRYPTION_KEY la migración V8 no arranca.
+      piiEncryptionKey: ${AUTH_PII_ENCRYPTION_KEY}
+
+auth:
+  pii:
+    # Clave simétrica para pgcrypto (nombres de usuario). Proviene solo del entorno.
+    encryption-key: ${AUTH_PII_ENCRYPTION_KEY}
 
 server:
   port: ${SERVER_PORT:8081}

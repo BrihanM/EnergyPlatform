@@ -79,4 +79,33 @@ class AuthLoginControllerTest {
                                 """))
                 .andExpect(status().isBadRequest());
     }
+
+    @Test
+    void rejectsOversizedIdentifierAndPasswordAsBadRequest() throws Exception {
+        String identifier = "a".repeat(321);
+        String password = "p".repeat(129);
+
+        mockMvc.perform(post("/api/v1/auth/login")
+                        .contentType("application/json")
+                        .content("""
+                                {"identifier":"%s","password":"%s"}
+                                """.formatted(identifier, password)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Request data is invalid"));
+    }
+
+    @Test
+    void treatsSqlInjectionPayloadAsPlainIdentifierWithUniformError() throws Exception {
+        String payload = "' OR '1'='1' --";
+        when(loginUseCase.login(any()))
+                .thenThrow(new com.miapp.auth.domain.exception.InvalidCredentialsException());
+
+        mockMvc.perform(post("/api/v1/auth/login")
+                        .contentType("application/json")
+                        .content("""
+                                {"identifier":"%s","password":"wrong"}
+                                """.formatted(payload)))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.message").value("Credenciales inválidas."));
+    }
 }

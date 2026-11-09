@@ -48,6 +48,9 @@ explicit grants. The scripts also revoke existing `PUBLIC` and cross-service
 grants on the service-owned tables, so operators must review any other
 consumers before rollout. The Market owner receives the `REFERENCES (id)` grant it
 needs for the existing foreign keys to `public.users`.
+When changing role names, operators must separately disable and revoke the
+former roles after checking their dependencies; bootstrap does not discover or
+remove obsolete identities.
 
 The bootstrap refuses existing Auth tables or Market objects owned by a different
 role; it does not transfer ownership or alter historical migrations. Before
@@ -178,11 +181,15 @@ old-cookie logout and rejection of both old and rotated JWTs. With a pool of
 two connections, twelve simultaneous failed logins all returned 401 and wrote
 their audit events. Additional event and filter coverage remains required.
 
-F17.4 also exercises real PostgreSQL roles in
+F17.4 `mvn -f backend/pom.xml verify` passed: Gateway 43, Auth 63 and Market
+33 tests, with no failures or skips. It also exercises real PostgreSQL roles in
 `PostgresRuntimePrivilegesIntegrationTest` and an isolated Compose deployment.
 The deployment's runtime credentials, not the migration-owner credentials,
 were used for SQL `SELECT`/`INSERT` and negative `UPDATE`, `DELETE`, `TRUNCATE`,
 `ALTER`, `DROP`, cross-audit read and `SET ROLE` checks. Gateway registration,
 login, public offers, offer creation, confirmed purchase, history, detail,
-refresh and logout were exercised against the same deployment. SQL mutation
-checks used a rolled-back test insertion; no audit history was deleted.
+meter provisioning, inconsistent reading, rotation and lifecycle, auditor
+query RBAC, refresh and logout were exercised against the same deployment.
+SQL mutation checks used a rolled-back test insertion; no audit history was
+deleted. The first Market insert probe omitted required fields and failed;
+the corrected probe passed.

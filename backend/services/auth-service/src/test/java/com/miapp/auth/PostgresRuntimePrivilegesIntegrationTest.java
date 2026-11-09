@@ -35,6 +35,7 @@ class PostgresRuntimePrivilegesIntegrationTest {
             for (String role : new String[]{AUTH_OWNER, AUTH_RUNTIME, MARKET_OWNER, MARKET_RUNTIME}) {
                 sql.execute("CREATE ROLE " + role + " LOGIN NOINHERIT PASSWORD '" + PASSWORD + "'");
             }
+            sql.execute("GRANT CREATE ON DATABASE " + POSTGRES.getDatabaseName() + " TO " + AUTH_OWNER);
             sql.execute("GRANT USAGE, CREATE ON SCHEMA public TO " + AUTH_OWNER);
             sql.execute("GRANT USAGE ON SCHEMA public TO " + AUTH_RUNTIME);
             sql.execute("CREATE SCHEMA energy_market AUTHORIZATION " + MARKET_OWNER);
@@ -42,7 +43,7 @@ class PostgresRuntimePrivilegesIntegrationTest {
         }
         Flyway.configure().dataSource(POSTGRES.getJdbcUrl(), AUTH_OWNER, PASSWORD)
                 .locations("classpath:db/migration", "classpath:db/pg-grants")
-                .placeholders(Map.of("authRuntimeRole", AUTH_RUNTIME, "marketMigrationRole", MARKET_OWNER,
+                .placeholders(Map.of("authRuntimeRole", AUTH_RUNTIME, "piiEncryptionKey", "test-only-pii-key-not-for-production", "marketMigrationRole", MARKET_OWNER,
                         "marketRuntimeRole", MARKET_RUNTIME))
                 .load().migrate();
         Path marketDb = Path.of("..", "energy-market-service", "src", "main", "resources", "db")
