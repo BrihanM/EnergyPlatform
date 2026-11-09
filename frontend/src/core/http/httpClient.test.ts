@@ -36,6 +36,10 @@ describe('httpClient', () => {
           headers: expect.any(Headers),
         }),
       );
+      await expect(httpClient.post('/api/v1/offers', { body: { energyAmountKwh: '1.000' } })).resolves.toEqual({ ok: true })
+      const options = fetchMock.mock.calls[0][1] as { headers: Headers; credentials: string }
+      expect(options.credentials).toBe('include')
+      expect(options.headers.get('Content-Type')).toBe('application/json')
     } finally {
       vi.unstubAllGlobals()
     }
