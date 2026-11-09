@@ -3,10 +3,10 @@
 ## Responsibility and scope
 
 `energy-market-service` owns the energy-market bounded context:
-offers, transactions, authenticated meter readings, simulated operator
-verification, and business audit records. F11 creates infrastructure only; no
-business entity, transaction workflow is implemented. F12 adds the persisted EnergyOffer
-publication and consultation slice.
+offers, transactions, authenticated meter readings and simulated operator
+verification. F11 established the infrastructure, F12 added offers, F14 added
+transactions, and F16 adds devices and readings. Durable business audit remains
+future work.
 
 The modules remain inside one service because these capabilities share market
 invariants and a simulated workflow. They can be extracted later if their
@@ -65,7 +65,9 @@ the `energy_market` schema. Auth remains owner of the public schema and its
 `V2__create_energy_offers.sql` creates the F12 `energy_offers` table with a
 foreign key to `public.users`, lifecycle checks, indexes, and an optimistic
 locking version, and `V3__create_energy_transactions.sql` creates transaction,
-verification, and idempotency tables. Future phases add only Energy Market
+verification, and idempotency tables. `V4__create_meter_devices_and_readings.sql`
+adds F16 device and reading tables; see [Meter devices and readings](./METER_DEVICES_AND_READINGS.md).
+Future phases add only Energy Market
 tables and must not update or delete Auth-owned rows.
 
 ## Configuration

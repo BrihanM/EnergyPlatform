@@ -62,6 +62,12 @@ physical energy.
 flows. Device authentication is separate from user JWT authentication, and
 simulation references make test outcomes traceable.
 
+**F16 implementation:** ADMIN provisions an independent device credential;
+Market stores its SHA-256 hash and verifies it under a row lock. Device UUIDs
+and credentials do not confer user roles. Reading UUIDs are supplied by devices,
+duplicates are rejected, and an excess surplus is retained as `INCONSISTENT`.
+TLS, rate limiting, secure delivery and durable audit remain operational work.
+
 ## ADR-007: Roles are explicit and least-privilege
 
 **Decision:** Adopt the conceptual roles `NORMAL_USER`, `ADMIN`, and
@@ -77,20 +83,34 @@ simulation references make test outcomes traceable.
 | Query audit records | No | No by default | Yes |
 | Ingest own device readings | Yes, via device credential | Operationally controlled | No |
 
-Current Auth has no role enum or role persistence. Adding roles is a future
-identity change and must not be inferred from `AccountStatus`.
+Auth persists the official roles and includes them in JWT claims. They are
+independent of `AccountStatus`; device credentials do not grant any user role.
+
+### F17 security design question, before implementation
+
+The current Gateway validates JWT signature, issuer, expiration and embedded
+roles locally; it does not check the current account status or role assignments.
+Revoking refresh sessions alone therefore cannot immediately invalidate an
+already-issued access token. A suspended user or a user whose role was removed
+can continue using that token until its expiry, including against Market.
+One alternative is a fail-closed, authenticated Gateway-to-Auth validation on
+protected requests that checks current account and role state. It provides
+immediate enforcement but adds latency and makes Auth availability a dependency
+of protected traffic. The alternative is to retain the expiry-bound window and
+document that risk; this does not provide immediate account or role revocation.
+The deployment and availability trade-off requires a decision before changing
+the authentication boundary.
 
 ## Decisions requiring approval before implementation
 
-1. Exact role storage and propagation (JWT claims versus authorization lookup),
-   including admin bootstrap and role-change audit.
+1. Further role-change audit and operational controls for admin bootstrap.
 2. Shared Flyway migration strategy for two services writing one database.
 3. Whether offer consultation is public or requires authentication.
 4. Whether purchases are always full-offer or allow partial quantities.
 5. Expiry mechanism (scheduled job, query-time derivation, or both).
 6. Durable audit owner and retention/redaction policy.
 7. Audit metadata column format and maximum size.
-8. Device credential algorithm, rotation, provisioning, and rate limits.
+8. Device rate limits, secure delivery and operational key management.
 9. Simulated operator rule set, retry policy, and verification cardinality.
 10. Decimal scale/rounding and any simulated currency unit.
 11. Normative framework and evidence required for HU-25.

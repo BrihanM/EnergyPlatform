@@ -12,12 +12,9 @@ export type AuthStatus = 'initializing' | 'authenticated' | 'unauthenticated'
 export interface AuthenticatedUser {
   /** The unique identifier of the user. */
   id?: string
-<<<<<<< Updated upstream
   firstName?: string
   lastName?: string
-=======
   /** The email address of the user. */
->>>>>>> Stashed changes
   email?: string
   /** The username of the user. */
   username?: string

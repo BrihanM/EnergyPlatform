@@ -1,75 +1,97 @@
-# Transactions module: blocked
+# Frontend transactions module
 
-## Scope and current status
+## Scope and architecture
 
-F15 is not implemented in this checkout. Purchase, transaction history and
-transaction detail depend on a market service and gateway routes that are not
-present in the current branch. No transaction types, services, screens,
-endpoints or idempotency keys have been added to the frontend. The existing
-Offers UI continues to have no purchase action.
+F15 adds simulated purchases, own transaction history, and transaction detail.
+`src/features/transactions` contains the API contracts and service, the purchase
+hook and pending-intention storage, reusable transaction display, and pages.
+Offer detail provides the purchase entry point. `App.tsx` provides History API
+routes `/transactions` and `/transactions/:id`.
 
-The current gateway routes authentication and the integration probe only; its
-default CORS allowed headers do not include `Idempotency-Key`. The current
-Compose configuration also does not define an energy-market service. The
-compiled files under the ignored `target` directory are build artifacts, not
-the source or a deployable service contract for this checkout.
+The existing HTTP client supplies authentication and refresh handling. The UI
+requires an authenticated `NORMAL_USER` with a known user ID and excludes
+`ADMIN` and `SECURITY_AUDITOR` accounts. The backend remains responsible for
+authorization, ownership, price, quantity and availability.
 
-## Contract discrepancy
+## Backend contract
 
-The repository contains transaction source in commit `41f07e3` on branch
-`develop-b`, which is not an ancestor of this checkout. This is historical
-evidence, not a contract implemented by the current branch. That revision
-defines:
+- `POST /api/v1/transactions`: `{ "offerId": "<uuid>" }` and
+  `Idempotency-Key`. The response contains the transaction snapshot.
+- `GET /api/v1/transactions/me?size=20&offset=0`: an array of the current
+  user's transactions as buyer or seller, ordered by the backend. No total or
+  participant filter is returned. A full page enables Next; consequently the
+  next page can be empty.
+- `GET /api/v1/transactions/{id}`: participant-only detail.
 
-- `POST /api/v1/transactions`, accepting `{ offerId }` and an
-  `Idempotency-Key` header.
-- `GET /api/v1/transactions/me`, returning a list with `size` and `offset`
-  parameters, not a Spring page response.
-- `GET /api/v1/transactions/{id}`.
-- `PENDING_VERIFICATION`, `CONFIRMED`, `REJECTED` and `CANCELLED` statuses.
+The response contains IDs, numeric energy/price/total, currency, status,
+creation/completion times and nullable verification fields. The service validates
+the expected shape before presenting it. The frontend distinguishes
+`CONFIRMED`, `REJECTED`, `PENDING_VERIFICATION` and `CANCELLED`. Historical
+documentation that refers to `/transactions/history` or
+`/api/v1/market/transactions` does not match the implemented controller.
 
-Its controller marks the idempotency header optional, but the service rejects
-null, blank, malformed or overly long keys. Its default gateway CORS headers
-also omit `Idempotency-Key`, so a cross-origin browser request using that header
-requires an explicit CORS configuration change. These observations must be
-rechecked against the actual backend revision deployed before implementation.
-In particular, the `GET /transactions/history` path in the existing story
-traceability document is not the history endpoint in that historical revision.
+## Purchase and idempotency
 
-## Required follow-up
+The user sees the offer and a confirmation explaining that no payment or real
+energy transfer takes place. One click submits a purchase; the simulator and
+verification are automatic. The UI prevents buying one's own offer, a
+non-active offer or an expired offer. The backend checks these rules again.
 
-Bring the intended market service and its gateway routing into this branch
-through the project's backend workflow, including CORS support for the
-idempotency header. Reconfirm authentication, ownership, error responses,
-pagination, transaction snapshots and idempotent retry behavior against the
-deployed code before implementing the frontend. A communication failure must
-not be treated as proof that a transaction was not recorded.
+Before sending, the hook generates a UUID and persists the offer ID and key
+under the authenticated user ID in localStorage. No credentials or keys are
+logged or shown. The same key is reused after errors, refreshes and retries;
+another offer is blocked until the pending intention is resolved. A validated
+terminal response clears the intention; `PENDING_VERIFICATION` retains it and
+records the transaction ID. An in-page lock and the Web Locks API prevent
+duplicate submissions across tabs in the same browser profile. A browser
+without Web Locks cannot submit a purchase and displays an explanation.
 
-The frontend also has pre-existing merge conflict markers in
-`src/core/auth/types.ts` and `src/core/http/types.ts`; these prevent a production
-build and need to be resolved separately. F15 does not modify Auth or the
-backend.
+An HTTP or communication error is **not** presented as a simulator rejection or
+proof that no purchase occurred. History provides a recovery action that
+retries the same key even when the offer detail is no longer available. A
+malformed response also leaves the intention intact. Browser storage failures
+stop new requests and are shown as errors. Purchase requests time out after
+30 seconds; a timeout also leaves the intention intact.
+Retry controls require the same pending intention to still exist under the
+cross-tab lock. A stale tab cannot create a new key after another tab has
+resolved or replaced that intention.
 
-## Story traceability
+## Operational and security limits
 
-This section supplements
-[the existing story matrix](../../backend/docs/USER_STORY_TRACEABILITY.md)
-without changing backend files:
-
-| Story | Status in this checkout |
-| --- | --- |
-| HU-20 | Pending: transaction history and its backend integration are unavailable. |
-| HU-23 | Partial: the Offers frontend exists, but purchase, history and transaction detail are not implemented or validated end-to-end. |
+- An existing `CORS_ALLOWED_HEADERS` override must include `Idempotency-Key`.
+  The gateway, Compose default and example environment now include it.
+- Clearing browser storage or using another browser/profile can lose the
+  locally stored intention. Do not retry an uncertain purchase from another
+  browser or clear storage before reconciling its history.
+- The backend does not expose cross-device reconciliation. History may show a
+  completed transaction, but its absence does not prove that an uncertain
+  operation did not happen. A permanently unresolved intention cannot be
+  discarded through the UI; consult the backend before clearing storage.
+  A separate backend enhancement could provide authenticated reconciliation
+  through an opaque operation identifier and an explicit retention policy,
+  without exposing idempotency keys or changing the existing purchase contract.
+- Backend decimal values are JSON numbers, so JavaScript numeric precision
+  limits apply. Offer values are converted to strings for the existing UI.
+- Detail failures including 403, 404 and invalid responses show the same safe
+  message. Verification reasons are not rendered as arbitrary server text.
 
 ## Validation
 
-No transaction tests have been added because no transaction integration has
-been implemented. Baseline validation on this checkout:
+F15.1 exercised an isolated Docker Compose stack with real Auth, Gateway,
+Market, PostgreSQL and Redis. The API checks covered registration, login and
+role refresh, anonymous offer queries, CORS preflight, forged identity headers,
+exclusive ADMIN and SECURITY_AUDITOR accounts, purchase, replay, participant
+history and detail, and denial of a foreign transaction. Test-only role setup
+was performed in the isolated database.
 
-- `npm test`: 20 passed, 1 failed. The existing HTTP client test expected
-  `Content-Type: application/json` but received no content type.
-- `npm run lint`: failed on the conflict markers in the two type files.
-- `npm run build`: failed with TypeScript errors on those conflict markers.
+A real browser test also simulated losing a committed purchase response,
+reloaded the page and replayed the same intention from another tab. It verified
+the same transaction and a single history entry, then confirmed that a stale
+third tab could not send a new purchase after resolution.
 
-Direct navigation, route refresh, and Offers/Auth end-to-end behavior remain
-unverified. These checks must be repeated after the blockers are resolved.
+The Vitest suite exercises purchase outcomes, validation/permission errors,
+same-key retry, stale-tab protection, duplicate submission, pending status,
+history pagination and roles, detail errors, incomplete responses, API headers,
+and direct routes.
+Run `npm test`, `npm run lint`, and `npm run build` in `frontend`. The gateway
+security tests and all backend tests can be run with `mvn test` from `backend`.

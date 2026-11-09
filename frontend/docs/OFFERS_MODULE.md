@@ -12,9 +12,10 @@ state locally as a substitute for the API.
 - `/offers/mine` — authenticated `NORMAL_USER` management view.
 - `/login` — existing authentication page.
 
-The application currently has no router dependency, so `App.tsx` provides the
-minimal History API routing needed by these screens. Backend authorization
-remains authoritative.
+`App.tsx` currently provides the History API routing used by these screens.
+Backend authorization remains authoritative.
+The gateway allows anonymous GET access to the offer list and UUID detail;
+`/offers/me`, offer mutations and transactions still require authentication.
 
 ## API integration
 
@@ -23,9 +24,10 @@ The service calls `GET /api/v1/offers`, `GET /api/v1/offers/{id}`,
 `DELETE /api/v1/offers/{id}`. Requests use the existing client, which attaches
 the in-memory access token and includes refresh cookies.
 
-Numeric values remain strings at the API boundary. The indicative total uses
-integer (`BigInt`) decimal multiplication before COP formatting. No purchase
-action is exposed.
+The backend sends JSON numbers; the service normalizes energy and price to the
+existing string contract. The indicative total uses integer (`BigInt`) decimal
+multiplication before COP formatting. Available offers can be purchased from
+their detail page by eligible users; see [Transactions](./TRANSACTIONS_MODULE.md).
 
 ## Permissions and UX
 
@@ -36,11 +38,9 @@ precision limits, and future expiration. Cancellation requires confirmation
 and leaves the offer visible in its `CANCELLED` state.
 
 Loading, empty, API error, unavailable detail, pagination, and mutation states
-are represented explicitly. HU-23 is partially covered: offer marketplace and
-management UI are implemented, while transactions, history, and other future
-features remain pending.
-
-The market service source and gateway routes are absent from the current branch,
-so Offers has not been validated end-to-end in this checkout. See
-[Transactions module status](./TRANSACTIONS_MODULE.md) for the F15 blockers and
-story traceability.
+are represented explicitly. F15.1 validated anonymous list/detail through the
+real gateway and market service, while private routes and role restrictions
+remained protected. Authenticated browser validation covered a simulated
+purchase, recovery after response loss, history and detail. HU-23 remains
+partially covered: the marketplace, management and transaction UI are
+implemented, while other future features remain pending.

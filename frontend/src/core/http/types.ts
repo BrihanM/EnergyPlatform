@@ -35,17 +35,6 @@ export type QueryParamCollection = QueryParamValue | QueryParamValue[]
  * @template TBody - The type of the request body.
  */
 export interface HttpRequestOptions<TBody = unknown> {
-<<<<<<< Updated upstream
-  method?: HttpMethod;
-  headers?: HeadersInit;
-  params?: Record<string, QueryParamCollection>;
-  body?: TBody;
-  credentials?: RequestCredentials;
-  signal?: AbortSignal;
-  requiresAuth?: boolean;
-  skipAuthRefresh?: boolean;
-  retryAfterRefreshAttempted?: boolean;
-=======
   /** The HTTP method for the request. Defaults to 'GET'. */
   method?: HttpMethod
   /** Custom headers to include in the request. */
@@ -58,7 +47,9 @@ export interface HttpRequestOptions<TBody = unknown> {
   credentials?: RequestCredentials
   /** AbortSignal to cancel the request. */
   signal?: AbortSignal
->>>>>>> Stashed changes
+  requiresAuth?: boolean
+  skipAuthRefresh?: boolean
+  retryAfterRefreshAttempted?: boolean
 }
 
 /**

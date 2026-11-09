@@ -43,6 +43,12 @@ El Gateway usa Spring Security WebFlux y valida antes del routing:
 - `sub` como UUID del usuario;
 - `username` no vacío.
 
+**F15.1 discrepancy and correction:** F12/F13 define the available-offer list
+and detail as public, but the earlier gateway required a JWT for every Offers
+route. The gateway now permits only GET list and canonical UUID detail,
+including the documented `/api/v1/market/offers` alias; `/me`, mutations and
+transaction routes remain protected.
+
 El secreto se obtiene obligatoriamente de `JWT_SECRET` y debe ser externo al
 repositorio, tener al menos 32 bytes y coincidir con el secreto usado por
 `auth-service`. Un JWT
@@ -51,7 +57,11 @@ inválidos produce `401 Unauthorized` sin detalles internos.
 Las denegaciones futuras de autorización se responderán como `403 Forbidden`
 sin exponer detalles de políticas.
 
-Son públicas únicamente las operaciones `POST /api/v1/auth/register`,
+F16 adds a JWT-independent route only for `POST /api/v1/market/devices/{uuid}/readings`.
+The Market service authenticates the device credential; administrative device
+routes remain JWT-protected and enforce ADMIN in Market.
+
+Además de esas consultas de ofertas y la recepción técnica descrita, son públicas las operaciones `POST /api/v1/auth/register`,
 `POST /api/v1/auth/login`, `POST /api/v1/auth/refresh`,
 `POST /api/v1/auth/logout`, `OPTIONS` y `GET /actuator/health` (incluyendo
 subrutas de health). El resto requiere `Authorization: Bearer <JWT>`.
@@ -62,6 +72,7 @@ recibidos del cliente y añade:
 ```text
 X-Authenticated-User-Id
 X-Authenticated-Username
+X-Authenticated-Roles
 ```
 
 El token no se reenvía ni se registra. `X-Authenticated-Account-Id` no se
@@ -77,7 +88,7 @@ directamente a Internet.
 | `AUTH_SERVICE_URI` | `http://localhost:8081` | Destino de Auth |
 | `CORS_ALLOWED_ORIGINS` | `http://localhost:5173` | Orígenes autorizados |
 | `CORS_ALLOWED_METHODS` | `GET,POST,PUT,PATCH,DELETE,OPTIONS` | Métodos CORS |
-| `CORS_ALLOWED_HEADERS` | `Authorization,Content-Type,X-Correlation-ID` | Headers permitidos |
+| `CORS_ALLOWED_HEADERS` | `Authorization,Content-Type,X-Correlation-ID,Idempotency-Key` | Headers permitidos |
 | `CORS_ALLOW_CREDENTIALS` | `true` | Credenciales CORS |
 | `CORS_MAX_AGE` | `3600` | Duración del preflight |
 

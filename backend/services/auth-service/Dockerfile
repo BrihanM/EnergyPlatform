@@ -4,6 +4,7 @@ WORKDIR /workspace
 COPY pom.xml .
 COPY services/api-gateway/pom.xml services/api-gateway/pom.xml
 COPY services/auth-service/pom.xml services/auth-service/pom.xml
+COPY services/energy-market-service/pom.xml services/energy-market-service/pom.xml
 RUN mvn -B -ntp -pl services/auth-service dependency:go-offline
 COPY services/auth-service/src services/auth-service/src
 RUN mvn -B -ntp -pl services/auth-service package -DskipTests

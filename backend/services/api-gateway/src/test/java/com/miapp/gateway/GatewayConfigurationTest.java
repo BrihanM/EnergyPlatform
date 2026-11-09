@@ -4,6 +4,9 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.core.env.Environment;
+import org.springframework.boot.env.YamlPropertySourceLoader;
+import org.springframework.core.env.EnumerablePropertySource;
+import org.springframework.core.io.FileSystemResource;
 import org.springframework.cloud.gateway.route.RouteDefinition;
 import org.springframework.cloud.gateway.route.RouteDefinitionLocator;
 
@@ -40,5 +43,16 @@ class GatewayConfigurationTest {
                 .satisfies(route -> assertThat(route.getPredicates()).anyMatch(predicate ->
                         predicate.getName().equals("Path")
                                 && predicate.getArgs().containsValue("/api/v1/market/**")));
+    }
+
+    @Test
+    void productionCorsDefaultAllowsIdempotencyHeader() throws Exception {
+        var source = new YamlPropertySourceLoader().load("production",
+                new FileSystemResource("src/main/resources/application.yml")).getFirst();
+        var names = ((EnumerablePropertySource<?>) source).getPropertyNames();
+        assertThat(names).anySatisfy(name -> {
+            assertThat(name).endsWith(".allowedHeaders");
+            assertThat(source.getProperty(name).toString()).contains("Idempotency-Key");
+        });
     }
 }

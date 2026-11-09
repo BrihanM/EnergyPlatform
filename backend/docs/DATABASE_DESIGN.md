@@ -3,9 +3,18 @@
 ## Design status
 
 The database remains one PostgreSQL instance and one normalized relational
-database. The F12 `energy_market.energy_offers` table is implemented; later
-business tables remain proposed. Existing Auth tables are documented from
+database. Offers, transactions, devices and readings are implemented in the
+market schema. Existing Auth tables are documented from
 Flyway migrations and remain owned by `auth-service`.
+
+F16 design clarification recorded before implementation: meter and reading
+tables and aggregates were proposed but absent from the code. The proposed
+unconditional `surplus <= generated` constraint conflicts
+with retaining inconsistent readings. The approved policy is to retain
+non-negative readings with surplus above generation as `INCONSISTENT`, never
+as `VALID`. The device supplies a reading UUID for duplicate detection;
+distinct readings may share a measurement timestamp. Future measurement
+timestamps are rejected without an assumed clock-skew tolerance.
 
 ## Ownership and existing tables
 
@@ -24,8 +33,8 @@ account credentials. Auth must not be required to join every market query.
 |---|---|---|
 | `energy_offers` | `id`, `seller_id`, `energy_amount_kwh`, `price_per_kwh`, `expires_at`, `status`, `created_at`, `updated_at`, `version` | **Implemented in F12**; PK `id`; FK seller -> `public.users.id`; positive quantity/price; enum and date checks |
 | `energy_transactions` | `id`, `offer_id`, `seller_id`, `buyer_id`, `energy_amount_kwh`, `price_per_kwh`, `total_amount`, `status`, `created_at`, `completed_at`, `idempotency_key` | **Implemented in F14**; PK/FKs; positive values; seller != buyer; COP check; unique buyer/key |
-| `meter_devices` | `id`, `owner_user_id`, `device_identifier`, `credential_hash`, `status`, `registered_at` | PK `id`; FK owner -> `users.id`; unique device identifier; credential hash not null; status check |
-| `energy_readings` | `id`, `meter_device_id`, `generated_energy_kwh`, `surplus_energy_kwh`, `measured_at`, `received_at`, `validation_status` | PK `id`; FK device; non-negative values; surplus <= generated; status check; duplicate policy index/constraint |
+| `meter_devices` | `id`, `owner_user_id`, `device_identifier`, `credential_hash`, `status`, `registered_at` | **Implemented in F16**; PK `id`; FK owner -> `users.id`; unique identifier; 32-byte credential hash; status check |
+| `energy_readings` | `id`, `meter_device_id`, `generated_energy_kwh`, `surplus_energy_kwh`, `measured_at`, `received_at`, `validation_status` | **Implemented in F16**; device-provided UUID PK; FK device; non-negative values; `VALID` requires surplus <= generated; timestamp and status checks |
 | `operator_verifications` | `id`, `transaction_id`, `result`, `verified_at`, `reason`, `simulation_reference`, `metadata` | **Implemented in F14**; one verification per transaction and FK to transaction |
 | `transaction_idempotency_keys` | `buyer_id`, `idempotency_key`, `offer_id`, `transaction_id`, `created_at` | **Implemented in F14**; composite PK and FK constraints |
 | `audit_events` | `id`, nullable `user_id`, `event_type`, `occurred_at`, `source_ip`, `resource_type`, `resource_id`, `result`, `correlation_id`, safe `metadata` | PK `id`; optional FK user; no secrets; append-only policy |
@@ -33,6 +42,7 @@ account credentials. Auth must not be required to join every market query.
 `NUMERIC` is required for energy and simulated money; Java implementations must
 use `BigDecimal`, never binary floating point. F12 uses `NUMERIC(12,3)` for
 energy and `NUMERIC(14,2)` for unit price. `TIMESTAMPTZ` maps to `Instant`.
+F16 uses `NUMERIC(18,6)` for reading quantities without rounding input.
 UUID is consistent with the existing Auth identifiers.
 
 ## Recommended indexes

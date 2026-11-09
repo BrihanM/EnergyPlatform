@@ -2,8 +2,8 @@
 
 ## Status and scope
 
-This document is a design specification. The F12 offers slice now implements the
-`EnergyOffer` aggregate and its persistence/API boundary; later contexts remain
+This document includes both implemented and proposed design. F12, F14 and F16
+implement offers, transactions, devices and readings; other contexts remain
 design-only. Facts marked **Existing** come from
 the current repository; facts marked **Proposed** require implementation and review.
 
@@ -15,7 +15,7 @@ payment, settlement, or real grid integration is performed.
 | Context | Owner | Main responsibility |
 |---|---|---|
 | Identity and access | `auth-service` | `users`, `accounts`, `sessions`, password and JWT/refresh-token lifecycle |
-| Energy market | Future `energy-market-service` | Offers, purchases, transactions, devices, readings, simulated verification |
+| Energy market | `energy-market-service` | Offers, purchases, transactions, devices, readings, simulated verification |
 | Audit and perimeter | API Gateway initially; durable audit ownership to be decided | Request metadata, correlation, security events, audit queries |
 
 `EnergyOffer` is the aggregate root for publication lifecycle. An offer may be
@@ -97,17 +97,18 @@ offer owner, and the buyer must be the authenticated caller.
 ### MeterDevice and EnergyReading
 
 `MeterDevice` contains `id UUID`, `ownerUserId UUID`, an opaque device identifier,
-a credential reference/hash (never the raw credential), `status`
+a credential hash (never the raw credential), `status`
 (`ACTIVE`, `SUSPENDED`, `REVOKED`), and `registeredAt`. Device authentication is
-separate from user JWT sessions; a future device adapter validates its credential
-and maps it to the device before accepting a reading.
+separate from user JWT sessions; the device adapter validates its credential
+and maps it to the device before accepting a reading. Revocation is terminal.
 
 `EnergyReading` contains `id UUID`, `meterDeviceId UUID`, `generatedEnergyKwh`,
 `surplusEnergyKwh`, `measuredAt`, `receivedAt`, and validation status
 (`PENDING`, `VALID`, `INCONSISTENT`, `REJECTED`). Rules include non-negative
-values, surplus not exceeding generated energy, valid device ownership, and an
-explicit policy for duplicate timestamps. Validation is domain/application logic,
-not evidence of physical grid delivery.
+values and authenticated device association. Surplus exceeding generation is
+retained as `INCONSISTENT`, never `VALID`. The device supplies a unique reading
+UUID; different readings may share a timestamp. Future timestamps are rejected.
+Validation is domain/application logic, not evidence of physical grid delivery.
 
 ### OperatorVerification
 

@@ -88,6 +88,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      auth-service:
+        condition: service_healthy
     networks:
       - backend-internal
     healthcheck:
@@ -109,7 +111,7 @@ services:
       JWT_SECRET: ${JWT_SECRET}
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS}
       CORS_ALLOWED_METHODS: ${CORS_ALLOWED_METHODS}
-      CORS_ALLOWED_HEADERS: ${CORS_ALLOWED_HEADERS:-Authorization,Content-Type,X-Correlation-ID}
+      CORS_ALLOWED_HEADERS: ${CORS_ALLOWED_HEADERS:-Authorization,Content-Type,X-Correlation-ID,Idempotency-Key}
       CORS_ALLOW_CREDENTIALS: ${CORS_ALLOW_CREDENTIALS}
       CORS_MAX_AGE: ${CORS_MAX_AGE}
     depends_on:

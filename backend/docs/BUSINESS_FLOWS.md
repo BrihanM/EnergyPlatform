@@ -60,14 +60,14 @@ settlement. The simulation remains durable and traceable.
 
 ## Device readings
 
-1. A device adapter authenticates an opaque device credential independently of
-   user JWT sessions.
-2. It verifies the device is `ACTIVE`, validates the payload and timestamps,
-   and persists a `PENDING` reading.
-3. Domain validation marks it `VALID`, `INCONSISTENT`, or `REJECTED` with a
-   reason suitable for audit.
-4. Readings are immutable measurements; corrections are new records, not silent
-   updates. Credentials and raw secrets are never persisted or audited.
+1. An ADMIN provisions a device and delivers its one-time credential securely.
+2. The device submits a UUID-identified reading with its credential, independently
+   of user JWT sessions. The service locks and authenticates the active device.
+3. Valid non-negative values with surplus no greater than generation are stored
+   as `VALID`; a greater surplus is stored as `INCONSISTENT`. Invalid data,
+   future dates, duplicate IDs and failed authentication are rejected.
+4. Readings are immutable; corrections require a new UUID. Raw credentials
+   are not persisted or logged. Reading ingestion never creates an offer.
 
 ## Audit
 

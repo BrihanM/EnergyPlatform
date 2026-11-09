@@ -38,7 +38,7 @@ public class AuthSessionController {
                         true, new com.miapp.auth.application.result.LoginResult.UserSummary(
                         result.user().id(), result.user().firstName(), result.user().lastName(),
                         result.user().username(), result.user().email(), result.user().createdAt()),
-                        result.accessToken(), result.expiresIn(), result.refreshToken())));
+                        result.accessToken(), result.expiresIn(), result.refreshToken(), result.roles())));
     }
 
     @PostMapping("/logout")

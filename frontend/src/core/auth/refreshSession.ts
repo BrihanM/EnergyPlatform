@@ -6,6 +6,7 @@ type RefreshResponse = {
   accessToken: string
   tokenType: string
   expiresIn: number
+  roles: string[]
   user: {
     id: string
     firstName: string
@@ -38,6 +39,7 @@ export const requestSessionRefresh = async (): Promise<RefreshedSessionPayload> 
       lastName: response.user.lastName,
       username: response.user.username,
       email: response.user.email,
+      roles: response.roles,
     },
   }
 }

@@ -103,6 +103,7 @@ describe('AuthProvider', () => {
             accessToken: 'restored-token',
             tokenType: 'Bearer',
             expiresIn: 3600,
+            roles: ['NORMAL_USER'],
             user: {
               id: 'user-2',
               firstName: 'Jane',
@@ -128,6 +129,7 @@ describe('AuthProvider', () => {
           <span data-testid="authenticated">{String(isAuthenticated)}</span>
           <span data-testid="token">{accessToken ?? 'none'}</span>
           <span data-testid="user">{user?.email ?? 'no-user'}</span>
+          <span data-testid="roles">{user?.roles?.join(',') ?? 'none'}</span>
         </>
       )
     }
@@ -142,6 +144,7 @@ describe('AuthProvider', () => {
       expect(screen.getByTestId('status').textContent).toBe('authenticated')
       expect(screen.getByTestId('token').textContent).toBe('restored-token')
       expect(screen.getByTestId('user').textContent).toBe('jane@example.com')
+      expect(screen.getByTestId('roles').textContent).toBe('NORMAL_USER')
     })
   })
 

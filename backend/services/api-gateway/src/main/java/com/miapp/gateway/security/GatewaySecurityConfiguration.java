@@ -16,12 +16,14 @@ import org.springframework.security.config.annotation.web.reactive.EnableWebFlux
 import org.springframework.security.config.web.server.ServerHttpSecurity;
 import org.springframework.security.core.context.ReactiveSecurityContextHolder;
 import org.springframework.security.web.server.SecurityWebFilterChain;
+import org.springframework.security.web.server.util.matcher.ServerWebExchangeMatcher;
 import org.springframework.web.server.ServerWebExchange;
 import org.springframework.web.server.WebFilter;
 import reactor.core.publisher.Mono;
 
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.regex.Pattern;
 
 /**
  * Configura autenticación JWT y autorización mínima del perímetro WebFlux.
@@ -35,6 +37,10 @@ public class GatewaySecurityConfiguration {
     private static final String ACCOUNT_ID = "X-Authenticated-Account-Id";
     private static final String USERNAME = "X-Authenticated-Username";
     private static final String ROLES = "X-Authenticated-Roles";
+    private static final Pattern PUBLIC_OFFER_DETAIL = Pattern.compile(
+            "^/api/v1/(?:market/)?offers/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$");
+    private static final Pattern DEVICE_READING = Pattern.compile(
+            "^/api/v1/market/devices/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}/readings$");
 
     /**
      * Exige autenticación en toda ruta no declarada pública.
@@ -57,6 +63,9 @@ public class GatewaySecurityConfiguration {
                                 "/api/v1/auth/refresh",
                                 "/api/v1/auth/logout").permitAll()
                         .pathMatchers(HttpMethod.GET, "/actuator/health", "/actuator/health/**").permitAll()
+                        .matchers(request -> isPublicOfferRead(request) || isDeviceReading(request)
+                                ? ServerWebExchangeMatcher.MatchResult.match()
+                                : ServerWebExchangeMatcher.MatchResult.notMatch()).permitAll()
                         .anyExchange().authenticated())
                 .build();
     }
@@ -115,12 +124,26 @@ public class GatewaySecurityConfiguration {
         String path = exchange.getRequest().getPath().value();
         String method = exchange.getRequest().getMethod().name();
         return "OPTIONS".equals(method)
+                || isPublicOfferRead(exchange)
+                || isDeviceReading(exchange)
                 || "GET".equals(method) && (path.equals("/actuator/health")
                 || path.startsWith("/actuator/health/"))
                 || "POST".equals(method) && (path.equals("/api/v1/auth/register")
                 || path.equals("/api/v1/auth/login")
                 || path.equals("/api/v1/auth/refresh")
                 || path.equals("/api/v1/auth/logout"));
+    }
+
+    private boolean isPublicOfferRead(ServerWebExchange exchange) {
+        if (exchange.getRequest().getMethod() != HttpMethod.GET) return false;
+        String path = exchange.getRequest().getPath().value();
+        return path.equals("/api/v1/offers") || path.equals("/api/v1/market/offers")
+                || PUBLIC_OFFER_DETAIL.matcher(path).matches();
+    }
+
+    private boolean isDeviceReading(ServerWebExchange exchange) {
+        return exchange.getRequest().getMethod() == HttpMethod.POST
+                && DEVICE_READING.matcher(exchange.getRequest().getPath().value()).matches();
     }
 
     private Mono<Void> unauthorized(ServerWebExchange exchange, ObjectMapper objectMapper) {

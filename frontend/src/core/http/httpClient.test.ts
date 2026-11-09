@@ -1,5 +1,12 @@
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { buildUrl, httpClient, normalizeHttpError } from './httpClient'
+import { HttpError } from './httpError'
+import { registerSessionHandlers, unregisterSessionHandlers } from '../auth/sessionRuntime'
+
+afterEach(() => {
+  vi.unstubAllGlobals()
+  unregisterSessionHandlers()
+})
 
 describe('httpClient', () => {
   it('builds gateway URLs with query parameters', () => {
@@ -16,47 +23,13 @@ describe('httpClient', () => {
     const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ ok: true }), { status: 200 }))
     vi.stubGlobal('fetch', fetchMock)
     try {
-<<<<<<< HEAD
-      const response = await httpClient.post<{ success: boolean }>('/api/v1/auth/login', {
-        body: {
-          email: 'user@example.com',
-          password: 'secret',
-        },
-      });
-
-<<<<<<< Updated upstream
-      expect(response).toEqual({ success: true });
-      expect(fetchMock).toHaveBeenCalledWith(
-        expect.stringContaining('/api/v1/auth/login'),
-        expect.objectContaining({
-          method: 'POST',
-          credentials: 'include',
-          headers: expect.any(Headers),
-        }),
-      );
-=======
       await expect(httpClient.post('/api/v1/offers', { body: { energyAmountKwh: '1.000' } })).resolves.toEqual({ ok: true })
       const options = fetchMock.mock.calls[0][1] as { headers: Headers; credentials: string }
       expect(options.credentials).toBe('include')
       expect(options.headers.get('Content-Type')).toBe('application/json')
->>>>>>> develop-f
     } finally {
       vi.unstubAllGlobals()
     }
-<<<<<<< HEAD
-=======
-    expect(response).toEqual({ success: true });
-    expect(fetchMock).toHaveBeenCalledWith(
-      expect.stringContaining('/api/v1/auth/login'),
-      expect.objectContaining({
-        method: 'POST',
-        credentials: 'include',
-        headers: expect.any(Headers),
-      }),
-    );
-
-    const fetchOptions = fetchMock.mock.calls[0][1] as { headers: Headers };
-    expect(fetchOptions.headers.get('Content-Type')).toBe('application/json');
   });
 
   it('retries a protected request once after a successful refresh', async () => {
@@ -174,10 +147,5 @@ describe('httpClient', () => {
     expect(firstError).toBeInstanceOf(HttpError);
     expect(secondError).toBeInstanceOf(HttpError);
     expect(clearSession).toHaveBeenCalledTimes(1);
->>>>>>> Stashed changes
   });
 });
-=======
-  })
-})
->>>>>>> develop-f

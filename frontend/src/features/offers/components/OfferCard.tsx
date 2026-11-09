@@ -1,19 +1,12 @@
 import type { ReactElement } from 'react'
 import type { EnergyOffer } from '../types/offer.types'
 import { OfferStatusBadge } from './OfferStatusBadge'
+import { multiply } from '../utils/decimal'
 
 const date = (value: string) => new Date(value).toLocaleString()
 const money = (value: string) => new Intl.NumberFormat('es-CO', {
   style: 'currency', currency: 'COP', maximumFractionDigits: 0,
 }).format(BigInt(value.split('.')[0] || '0'))
-const multiply = (left: string, right: string): string => {
-  const [a, b = ''] = left.split('.'); const [c, d = ''] = right.split('.')
-  const scale = b.length + d.length
-  const value = BigInt((a + b) || '0') * BigInt((c + d) || '0')
-  const digits = value.toString().padStart(scale + 1, '0')
-  return scale ? `${digits.slice(0, -scale)}.${digits.slice(-scale)}` : digits
-}
-
 export function OfferCard({ offer, onSelect, actions }: { offer: EnergyOffer; onSelect?: () => void; actions?: ReactElement }): ReactElement {
   return <article className="offer-card">
     <div className="offer-card-header"><OfferStatusBadge status={offer.status} /><button className="link-button" onClick={onSelect}>View details</button></div>

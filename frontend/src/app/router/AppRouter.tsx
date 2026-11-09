@@ -1,7 +1,9 @@
 import type { ReactElement } from 'react'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 
-import { LoginPage, RegisterPage, AuthenticatedHomePage } from '../../features/auth/pages'
+import { LoginPage } from '../../features/auth/pages'
+import { RegisterPage } from '../../features/auth/pages/RegisterPage'
+import { AuthenticatedHomePage } from '../../features/auth/pages/AuthenticatedHomePage'
 import { ProtectedRoute } from './ProtectedRoute'
 import { PublicRoute } from './PublicRoute'
 
