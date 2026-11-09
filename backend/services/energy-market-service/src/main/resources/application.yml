@@ -11,6 +11,11 @@ spring:
   flyway:
     enabled: ${ENERGY_MARKET_FLYWAY_ENABLED:true}
     locations: ${ENERGY_MARKET_FLYWAY_LOCATIONS:classpath:db/migration}
+    user: ${ENERGY_MARKET_FLYWAY_USERNAME:${spring.datasource.username}}
+    password: ${ENERGY_MARKET_FLYWAY_PASSWORD:${spring.datasource.password}}
+    placeholders:
+      marketRuntimeRole: ${ENERGY_MARKET_DB_USERNAME:miapp}
+      authRuntimeRole: ${AUTH_DB_USERNAME:miapp}
     schemas: ${ENERGY_MARKET_DB_SCHEMA:energy_market}
     default-schema: ${ENERGY_MARKET_DB_SCHEMA:energy_market}
     create-schemas: true

@@ -102,13 +102,26 @@ class MeterDeviceReadingIntegrationTest {
                 .andExpect(status().isCreated()).andExpect(jsonPath("$.validationStatus").value("VALID"))
                 .andExpect(jsonPath("$.meterDeviceId").value(device.id().toString()));
         reading(device.id(), device.credential(), readingId, "2", "1", measured).andExpect(status().isConflict());
-        reading(device.id(), device.credential(), UUID.randomUUID(), "2", "3", measured)
+        UUID inconsistentId = UUID.randomUUID();
+        reading(device.id(), device.credential(), inconsistentId, "2", "3", measured)
                 .andExpect(status().isCreated()).andExpect(jsonPath("$.validationStatus").value("INCONSISTENT"));
         assertThat(jdbc.queryForObject("SELECT count(*) FROM energy_market.energy_readings WHERE meter_device_id = ?",
                 Integer.class, device.id())).isEqualTo(2);
         byte[] hash = jdbc.queryForObject("SELECT credential_hash FROM energy_market.meter_devices WHERE id = ?",
                 byte[].class, device.id());
         assertThat(hash).hasSize(32).isNotEqualTo(device.credential().getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        var event = jdbc.queryForMap("""
+                SELECT actor_type, actor_id, affected_user_id, resource_type, resource_id, result, occurred_at,
+                       row_to_json(e)::text AS payload
+                FROM energy_market.audit_events e WHERE event_type = 'READING_INCONSISTENT' AND resource_id = ?
+                """, inconsistentId);
+        assertThat(event.get("actor_type")).isEqualTo("DEVICE");
+        assertThat(event.get("actor_id")).isEqualTo(device.id());
+        assertThat(event.get("affected_user_id")).isEqualTo(owner);
+        assertThat(event.get("resource_type")).isEqualTo("READING");
+        assertThat(event.get("result")).isEqualTo("SUCCESS");
+        assertThat(event.get("occurred_at")).isNotNull();
+        assertThat((String) event.get("payload")).doesNotContain(device.credential());
     }
 
     @Test
@@ -186,6 +199,19 @@ class MeterDeviceReadingIntegrationTest {
         String events = jdbc.queryForList("SELECT * FROM energy_market.audit_events WHERE resource_id = ?",
                 device.id()).toString();
         assertThat(events).doesNotContain(device.credential(), replacement);
+        var auditRows = jdbc.queryForList("""
+                SELECT actor_type, actor_id, affected_user_id, resource_type, result, occurred_at
+                FROM energy_market.audit_events WHERE resource_id = ?
+                """, device.id());
+        assertThat(auditRows).hasSize(5);
+        for (var event : auditRows) {
+            assertThat(event.get("actor_type")).isEqualTo("USER");
+            assertThat(event.get("actor_id")).isEqualTo(owner);
+            assertThat(event.get("affected_user_id")).isEqualTo(owner);
+            assertThat(event.get("resource_type")).isEqualTo("DEVICE");
+            assertThat(event.get("result")).isEqualTo("SUCCESS");
+            assertThat(event.get("occurred_at")).isNotNull();
+        }
     }
 
     ResultActions changeStatus(String url, String state) throws Exception {

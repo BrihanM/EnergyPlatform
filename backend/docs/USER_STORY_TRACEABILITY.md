@@ -25,10 +25,10 @@ present in the frontend; live end-to-end verification remains pending.
 | HU-16 | Gateway/Operations | Network configuration | internal network and perimeter checks | 6 | Docker topology | Partially present in Compose; acceptance evidence pending |
 | HU-17 | Frontend/auth | Auth session | Login/register/protected routes | 1-2 | Auth endpoints | Core Auth implementation present; broader route validation pending |
 | HU-18 | Market/Infrastructure | Device credential, audit metadata | encryption at rest/in transit design | 7 | Key-management decision | Pending |
-| HU-19 | Auth/Market | AuditEvent | event persistence and emission | 7 | Audit ownership/schema | Persistent events implemented; event coverage, concurrency and integration validation incomplete |
+| HU-19 | Auth/Market | AuditEvent | event persistence and emission | 7 | Audit ownership/schema | Persistent events and rollback tested; Compose separates SQL runtime and Flyway roles; complete event/field coverage and existing-environment rollout remain pending |
 | HU-20 | Market/transactions | Transaction | `GET /api/v1/transactions/me` | 7 | HU-12, authorization | Backend and paginated frontend history implemented; authenticated API and browser flow validated against an isolated Compose stack |
-| HU-21 | Audit | AuditEvent | auditor query/filter UI/API | 7 | HU-06, HU-19 | Separate auditor-only backend queries validated through Gateway; complete filter coverage pending; UI not implemented |
-| HU-22 | Administration | User, Account, Role | suspend/list users | 8 | HU-06, Auth ownership contract | Backend list/suspend/reactivate validated through Gateway; rollback and concurrent administrator suspension tested; further concurrency coverage pending |
+| HU-21 | Audit | AuditEvent | auditor query/filter UI/API | 7 | HU-06, HU-19 | Separate auditor-only queries and PostgreSQL filter/pagination tests; complete edge-case coverage pending; UI not implemented |
+| HU-22 | Administration | User, Account, Role | suspend/list users | 8 | HU-06, Auth ownership contract | Backend list/suspend/reactivate validated through Gateway; rollback, competing suspensions and login/refresh races tested; existing combined roles require operator review |
 | HU-23 | Frontend/market | Offer, Transaction | offers and transaction pages | 8 | HU-09-HU-13 | Partially implemented: offers, purchase and transaction history/detail UI; browser purchase/recovery validated, other future features remain pending |
 | HU-24 | DevSecOps | All | security and concurrency tests | 8 | Implemented market flows | Pending |
 | HU-25 | Compliance | Traceability matrix | normative mapping and evidence | 8 | Security controls and audit | Pending |

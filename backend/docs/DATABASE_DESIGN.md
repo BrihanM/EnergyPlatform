@@ -1,5 +1,13 @@
 # PostgreSQL Database Design
 
+Compose uses separate Auth and Market migration owners and runtime roles.
+Audit tables are owned by the relevant migration role; runtime roles can read
+and insert their own events but cannot mutate them or access the other audit
+table. PostgreSQL administrators and migration owners remain trusted. Future
+tables and sequences need explicit runtime grants. Existing databases require
+an operator-reviewed ownership migration; see
+[Audit and user administration](AUDIT_AND_USER_ADMINISTRATION.md).
+
 Auth V7 adds `rotated_refresh_token_history`, containing only refresh hashes
 and their session references. Expired-session history is removed by a bounded
 scheduled cleanup. See [Audit and user administration](AUDIT_AND_USER_ADMINISTRATION.md)
@@ -99,14 +107,7 @@ constraint remains the final concurrency barrier.
 
 ## Flyway and shared database decision
 
-Current Auth migrations are `V1` through `V4` under Auth. Because both services
-will target one database, independently starting a second `V1` sequence is unsafe.
-Before implementation, approve one of:
-
-- a single centrally ordered migration stream with explicit ownership;
-- one database schema per bounded context inside the same database, with a
-  coordinated migration history and deliberate cross-schema FKs; or
-- a shared migration module executed once during deployment.
-
-The chosen option must preserve the user's one-database decision and must not
-silently allow both services to mutate the same tables.
+Auth and Market use separate Flyway histories in `public` and `energy_market`
+respectively, with deliberate Market foreign keys to `public.users`. Compose
+starts Auth before Market so its migrations and required `REFERENCES` grant are
+available. Historical migration streams are not rewritten.

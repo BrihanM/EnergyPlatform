@@ -101,6 +101,21 @@ class EnergyTransactionIntegrationTest {
         assertThat(count("energy_market.energy_transactions")).isEqualTo(1);
         assertThat(count("energy_market.operator_verifications")).isEqualTo(1);
         assertThat(offerStatus(offerId)).isEqualTo("SOLD");
+        var events = jdbc.queryForList("""
+                SELECT event_type, actor_type, actor_id, affected_user_id, resource_type, resource_id, result, occurred_at
+                FROM energy_market.audit_events WHERE actor_id = ? ORDER BY occurred_at, id
+                """, buyer);
+        assertThat(events).extracting(event -> event.get("event_type"))
+                .containsExactly("PURCHASE_STARTED", "PURCHASE_CONFIRMED");
+        for (var event : events) {
+            assertThat(event.get("actor_type")).isEqualTo("USER");
+            assertThat(event.get("actor_id")).isEqualTo(buyer);
+            assertThat(event.get("affected_user_id")).isEqualTo(buyer);
+            assertThat(event.get("resource_type")).isEqualTo("TRANSACTION");
+            assertThat(event.get("resource_id")).isNotNull();
+            assertThat(event.get("result")).isEqualTo("SUCCESS");
+            assertThat(event.get("occurred_at")).isNotNull();
+        }
     }
 
     @Test
@@ -272,6 +287,19 @@ class EnergyTransactionIntegrationTest {
                 SELECT event_type FROM energy_market.audit_events WHERE resource_id = ? ORDER BY occurred_at
                 """, String.class, UUID.fromString(id)))
                 .containsExactly("OFFER_CREATED", "OFFER_UPDATED", "OFFER_CANCELLED");
+        var events = jdbc.queryForList("""
+                SELECT actor_type, actor_id, affected_user_id, resource_type, result, occurred_at
+                FROM energy_market.audit_events WHERE resource_id = ?
+                """, UUID.fromString(id));
+        assertThat(events).hasSize(3);
+        for (var event : events) {
+            assertThat(event.get("actor_type")).isEqualTo("USER");
+            assertThat(event.get("actor_id")).isEqualTo(seller);
+            assertThat(event.get("affected_user_id")).isEqualTo(seller);
+            assertThat(event.get("resource_type")).isEqualTo("OFFER");
+            assertThat(event.get("result")).isEqualTo("SUCCESS");
+            assertThat(event.get("occurred_at")).isNotNull();
+        }
     }
 
     @Test

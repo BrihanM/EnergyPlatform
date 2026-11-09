@@ -3,7 +3,9 @@ package com.miapp.auth;
 import com.jayway.jsonpath.JsonPath;
 import com.miapp.auth.application.service.UserAdministrationService;
 import com.miapp.auth.application.service.RefreshTokenHistoryCleanup;
+import com.miapp.auth.application.service.RoleManagementService;
 import com.miapp.auth.domain.exception.InvalidRoleOperationException;
+import com.miapp.auth.domain.model.Role;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import jakarta.servlet.http.Cookie;
@@ -44,6 +46,7 @@ class OnlineAuthorizationIntegrationTest extends PostgresIntegrationTest {
     @Autowired MockMvc mvc;
     @Autowired JdbcTemplate jdbc;
     @Autowired UserAdministrationService administration;
+    @Autowired RoleManagementService roleManagement;
     @Autowired PlatformTransactionManager transactions;
     @Autowired RefreshTokenHistoryCleanup historyCleanup;
     private final List<UUID> createdUsers = new ArrayList<>();
@@ -93,6 +96,117 @@ class OnlineAuthorizationIntegrationTest extends PostgresIntegrationTest {
     private String sid(String token) {
         return Jwts.parser().verifyWith(Keys.hmacShaKeyFor(JWT_SECRET.getBytes(StandardCharsets.UTF_8)))
                 .build().parseSignedClaims(token).getPayload().get("sid", String.class);
+    }
+
+    @Test
+    void auditPersistsAuthenticationRolesAndAccountLifecycleWithoutCredentials() throws Exception {
+        Instant before = Instant.now().minusSeconds(1);
+        Login admin = login();
+        Login target = login();
+        jdbc.update("INSERT INTO user_roles (user_id, role_code, assigned_at) VALUES (?, 'ADMIN', now())",
+                admin.userId());
+        String username = jdbc.queryForObject("SELECT username FROM accounts WHERE user_id = ?",
+                String.class, target.userId());
+        mvc.perform(post("/api/v1/auth/login").contentType("application/json")
+                        .content("{\"identifier\":\"%s\",\"password\":\"wrong-password\"}".formatted(username)))
+                .andExpect(status().isUnauthorized());
+        var refresh = mvc.perform(post("/api/v1/auth/refresh").cookie(target.refresh()))
+                .andExpect(status().isOk()).andReturn().getResponse();
+        mvc.perform(post("/api/v1/auth/logout").cookie(refresh.getCookie("refresh_token")))
+                .andExpect(status().isNoContent());
+        roleManagement.assign(admin.userId(), target.userId(), Role.SECURITY_AUDITOR);
+        roleManagement.revoke(admin.userId(), target.userId(), Role.SECURITY_AUDITOR);
+        administration.suspend(admin.userId(), target.userId());
+        administration.reactivate(admin.userId(), target.userId());
+
+        var events = jdbc.queryForList("""
+                SELECT event_type, actor_type, actor_id, affected_user_id, resource_type,
+                       resource_id, result, role_code, occurred_at, row_to_json(e)::text AS payload
+                FROM auth_audit_events e WHERE affected_user_id = ? ORDER BY occurred_at, id
+                """, target.userId());
+        assertThat(events).extracting(event -> event.get("event_type")).containsExactly(
+                "LOGIN_SUCCEEDED", "SESSION_REFRESHED", "LOGOUT", "ROLE_ASSIGNED", "ROLE_REVOKED",
+                "USER_SUSPENDED", "USER_REACTIVATED");
+        for (var event : events) {
+            String type = (String) event.get("event_type");
+            boolean administrative = type.startsWith("ROLE_") || type.startsWith("USER_");
+            assertThat(event.get("actor_type")).isEqualTo("USER");
+            assertThat(event.get("actor_id")).isEqualTo(administrative ? admin.userId() : target.userId());
+            assertThat(event.get("affected_user_id")).isEqualTo(target.userId());
+            assertThat(event.get("resource_id")).isNotNull();
+            assertThat(event.get("resource_type")).isEqualTo(administrative ? "USER" : "SESSION");
+            assertThat(event.get("result")).isEqualTo("SUCCESS");
+            assertThat(event.get("role_code")).isEqualTo(type.startsWith("ROLE_") ? "SECURITY_AUDITOR" : null);
+            assertThat(((java.sql.Timestamp) event.get("occurred_at")).toInstant())
+                    .isBetween(before, Instant.now().plusSeconds(1));
+            assertThat((String) event.get("payload"))
+                    .doesNotContain("Password123!", "wrong-password", target.accessToken(),
+                            target.refresh().getValue(), refresh.getCookie("refresh_token").getValue());
+        }
+        var rejected = jdbc.queryForMap("""
+                SELECT actor_type, actor_id, affected_user_id, resource_type, resource_id, result, row_to_json(e)::text AS payload
+                FROM auth_audit_events e WHERE event_type = 'LOGIN_FAILED' AND occurred_at >= ?
+                ORDER BY occurred_at DESC LIMIT 1
+                """, java.sql.Timestamp.from(before));
+        assertThat(rejected.get("actor_type")).isEqualTo("ANONYMOUS");
+        assertThat(rejected.get("actor_id")).isNull();
+        assertThat(rejected.get("affected_user_id")).isNull();
+        assertThat(rejected.get("resource_type")).isEqualTo("ACCOUNT");
+        assertThat(rejected.get("resource_id")).isNull();
+        assertThat(rejected.get("result")).isEqualTo("REJECTED");
+        assertThat((String) rejected.get("payload")).doesNotContain(username, "wrong-password");
+    }
+
+    @Test
+    void auditFiltersAndPaginationAreEnforcedByTheDatabase() throws Exception {
+        Instant from = Instant.now().minusSeconds(1);
+        Login target = login();
+        Login auditor = login();
+        jdbc.update("INSERT INTO user_roles (user_id, role_code, assigned_at) VALUES (?, 'SECURITY_AUDITOR', now())",
+                auditor.userId());
+        mvc.perform(post("/api/v1/auth/logout").cookie(target.refresh())).andExpect(status().isNoContent());
+        Instant to = Instant.now().plusSeconds(1);
+        String path = "/api/v1/auth/audit/events";
+        String actor = auditor.userId().toString();
+        var first = mvc.perform(get(path).param("page", "0").param("size", "1")
+                        .param("user", target.userId().toString()).param("from", from.toString()).param("to", to.toString())
+                        .header("X-Authenticated-User-Id", actor).header("X-Authenticated-Roles", "SECURITY_AUDITOR"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.hasNext").value(true))
+                .andReturn().getResponse().getContentAsString();
+        var second = mvc.perform(get(path).param("page", "1").param("size", "1")
+                        .param("user", target.userId().toString()).param("from", from.toString()).param("to", to.toString())
+                        .header("X-Authenticated-User-Id", actor).header("X-Authenticated-Roles", "SECURITY_AUDITOR"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.hasNext").value(false))
+                .andReturn().getResponse().getContentAsString();
+        assertThat(Instant.parse(JsonPath.read(first, "$.items[0].occurredAt")))
+                .isAfterOrEqualTo(Instant.parse(JsonPath.read(second, "$.items[0].occurredAt")));
+        mvc.perform(get(path).param("page", "0").param("size", "10")
+                        .param("user", target.userId().toString()).param("type", "LOGOUT")
+                        .header("X-Authenticated-User-Id", actor).header("X-Authenticated-Roles", "SECURITY_AUDITOR"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.items.length()").value(1))
+                .andExpect(jsonPath("$.items[0].type").value("LOGOUT"));
+        mvc.perform(get(path).param("page", "2").param("size", "1").param("user", target.userId().toString())
+                        .header("X-Authenticated-User-Id", actor).header("X-Authenticated-Roles", "SECURITY_AUDITOR"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.items").isEmpty());
+        for (String[] parameter : new String[][]{
+                {"size", "101"}, {"from", "not-an-instant"}, {"user", "not-a-uuid"}, {"type", "NOT_AN_EVENT"}}) {
+            var request = get(path).param("page", "0")
+                    .param("size", parameter[0].equals("size") ? parameter[1] : "1")
+                    .header("X-Authenticated-User-Id", actor).header("X-Authenticated-Roles", "SECURITY_AUDITOR");
+            if (!parameter[0].equals("size")) request.param(parameter[0], parameter[1]);
+            mvc.perform(request)
+                    .andExpect(status().isBadRequest());
+        }
+        mvc.perform(get(path).param("page", "0").param("size", "1")
+                        .param("from", to.toString()).param("to", from.toString())
+                        .header("X-Authenticated-User-Id", actor).header("X-Authenticated-Roles", "SECURITY_AUDITOR"))
+                .andExpect(status().isBadRequest());
+        for (String role : List.of("ADMIN", "NORMAL_USER")) {
+            mvc.perform(get(path).param("page", "0").param("size", "1")
+                            .header("X-Authenticated-User-Id", actor).header("X-Authenticated-Roles", role))
+                    .andExpect(status().isForbidden());
+        }
+        mvc.perform(get(path).param("page", "0").param("size", "1")).andExpect(status().isUnauthorized());
     }
 
     @Test

@@ -23,12 +23,74 @@ after the authentication transaction has rolled back and released its connection
 successful business events share the business transaction. Replays do not add
 purchase events, and rolled-back operations do not record successful outcomes.
 
-There are no event mutation or deletion APIs. This is not a tamper-proof audit
-store: Compose's database owner and runtime user can alter records. Production
-requires a separate Flyway owner and runtime role with only `SELECT` and
-`INSERT` on audit tables, plus retention, backups and transport protection.
-Those privileges are not configured or enforced by the current Compose setup.
-Even with restricted runtime privileges, the database owner can alter records.
+There are no event mutation or deletion APIs. Compose provisions separate Flyway
+owners and runtime roles; each runtime has `SELECT` and `INSERT`, but not
+`UPDATE`, `DELETE`, `TRUNCATE`, `ALTER` or `DROP`, on its own audit table.
+Cross-service audit access is denied. This is not tamper-proof: database
+administrators and migration owners remain trusted and can alter records.
+Retention, backups and transport protection remain operational requirements.
+The Flyway credentials are present in each application process; isolating
+migrations in a separate deployment job would provide a stronger boundary.
+
+## Database deployment and ownership
+
+Compose requires distinct `AUTH_DB_USERNAME`, `AUTH_FLYWAY_USERNAME`,
+`ENERGY_MARKET_DB_USERNAME` and `ENERGY_MARKET_FLYWAY_USERNAME`, with their
+corresponding `*_PASSWORD` values supplied outside the repository. See
+`../.env.example`. `postgres-bootstrap` checks that the four role names
+are distinct, unprivileged and have no group memberships; it creates them and
+grants schema access. Auth and Market then run their own historical migrations
+followed by their repeatable `db/pg-grants` scripts as their respective Flyway
+owners. The scripts explicitly grant operational privileges and only read and
+append privileges on audit. Global and schema-specific default privileges
+exclude the runtime roles and `PUBLIC`; future tables and sequences require
+explicit grants. The scripts also revoke existing `PUBLIC` and cross-service
+grants on the service-owned tables, so operators must review any other
+consumers before rollout. The Market owner receives the `REFERENCES (id)` grant it
+needs for the existing foreign keys to `public.users`.
+
+The bootstrap refuses existing Auth tables or Market objects owned by a different
+role; it does not transfer ownership or alter historical migrations. Before
+upgrading an existing installation, take and test a backup, schedule a
+maintenance window, inventory object ownership and effective grants, and have
+an authorized database operator explicitly transfer the affected objects to
+the corresponding owner after reviewing dependencies and other consumers.
+Re-run bootstrap and validate the grants before restoring traffic. The checked
+existing `miapp` installation has Auth V1-V4 owned by `postgres`, so it cannot
+be automatically upgraded by this Compose configuration. The current Market
+migrations and grants explicitly use `energy_market`; Compose rejects a
+different `ENERGY_MARKET_DB_SCHEMA`.
+
+Outside Compose, Flyway still defaults to the DataSource credentials and the
+grant migrations are not enabled by default. Configure separate credentials,
+`AUTH_FLYWAY_LOCATIONS` and `ENERGY_MARKET_FLYWAY_LOCATIONS` to include both
+`classpath:db/migration` and `classpath:db/pg-grants`, and provision and verify
+roles and ownership independently. Do not assume the runtime restrictions apply
+to an unconfigured environment.
+
+## Audit coverage matrix
+
+The cited integration tests use PostgreSQL. Field and filter coverage is not
+yet exhaustive; a listed event is not a claim that every required edge case has
+been verified.
+
+| Events | Actor / resource / result | Evidence |
+|---|---|---|
+| `LOGIN_SUCCEEDED`, `SESSION_REFRESHED`, `LOGOUT` | USER / SESSION / SUCCESS | `OnlineAuthorizationIntegrationTest.auditPersistsAuthenticationRolesAndAccountLifecycleWithoutCredentials` |
+| `LOGIN_FAILED` | ANONYMOUS / ACCOUNT / REJECTED | Same test; concurrent pool test in `FailedLoginPoolIntegrationTest` |
+| `ROLE_ASSIGNED`, `ROLE_REVOKED` | ADMIN user / USER and affected role / SUCCESS | `auditPersistsAuthenticationRolesAndAccountLifecycleWithoutCredentials`; initial bootstrap assignment uses SYSTEM |
+| `USER_SUSPENDED`, `USER_REACTIVATED` | ADMIN user / USER / SUCCESS | Same test; rollback and audit-write failure tests in `OnlineAuthorizationIntegrationTest` |
+| `OFFER_CREATED`, `OFFER_UPDATED`, `OFFER_CANCELLED` | USER / OFFER / SUCCESS | `EnergyTransactionIntegrationTest.offerLifecyclePersistsAuditableFacts` |
+| `PURCHASE_STARTED`, `PURCHASE_CONFIRMED` | buyer / TRANSACTION / SUCCESS | `controllerExecutesAutomaticPurchaseAndReturnsVerificationSnapshot`; replay and rollback tests |
+| `PURCHASE_REJECTED` | buyer / TRANSACTION / REJECTED | `rejectedPurchaseRecordsItsActualOutcome` |
+| `METER_PROVISIONED`, `METER_CREDENTIAL_ROTATED`, `METER_SUSPENDED`, `METER_ACTIVATED`, `METER_REVOKED` | ADMIN user / DEVICE / SUCCESS | `MeterDeviceReadingIntegrationTest.rotatesSuspendsRevokesAndEnforcesAdmin` |
+| `READING_INCONSISTENT` | DEVICE / READING / SUCCESS | `authenticatesPersistsClassifiesAndPreventsDuplicates` |
+
+Both tables contain allow-listed scalar fields, not free-form metadata.
+Successful Auth tests check user, resource, result, timestamp and absence of
+the tested password and tokens; Market meter tests check absence of the tested
+device credentials. Full timestamp, sensitive-field and rollback assertions for
+every Market event, including rejected purchases, remain pending.
 
 ## Queries
 
@@ -57,6 +119,36 @@ removes the inappropriate role through a controlled, audited process. If the
 only administrator has both roles, recovery requires an operator; do not remove
 either role automatically. A production inventory has not been performed.
 
+### Inventory and reconciliation of incompatible roles
+
+The inspected existing Compose Auth connection targets database `miapp`,
+schema `public`. That database's Auth Flyway history ends at V4; `user_roles`
+is introduced by V5 and is absent. This is an older installation without the
+RBAC schema, not evidence that the actual deployment has no incompatible
+assignments. Confirm the deployment's JDBC URL, database, schema and migration
+history before drawing conclusions. A separate disposable database `f174test`
+had `public.user_roles` and zero combined assignments; it is not the existing
+deployment and cannot establish its inventory.
+
+In the correct RBAC-enabled database, use a read-only authorized connection:
+
+```sql
+SELECT current_database(), current_schema(), to_regclass('public.user_roles');
+SELECT user_id, array_agg(role_code ORDER BY role_code) AS roles
+FROM public.user_roles
+WHERE role_code IN ('ADMIN', 'SECURITY_AUDITOR')
+GROUP BY user_id
+HAVING count(DISTINCT role_code) = 2;
+```
+
+Treat the output as an operational inventory of internal identifiers, not an
+instruction to alter assignments. For each match, an authorized owner must
+decide and record which duty should remain, review last-administrator and
+account-recovery constraints, and perform an approved, auditable role change.
+Verify the resulting assignments and online authorization afterwards. Never
+automatically choose or remove a role; authorization continues to reject the
+combined assignment until it is reconciled.
+
 Gateway continues to validate each protected request online through Auth without
 a cached authorization fallback. Auth retains hashes of rotated refresh tokens
 in `rotated_refresh_token_history` (V7), associated with the owning session.
@@ -77,14 +169,20 @@ or client-supplied session identifier is stored or trusted for logout.
 
 ## Validation status
 
-`mvn verify` passed for Gateway (43 tests), Auth (40) and Market (30), with
-PostgreSQL-backed tests and Flyway migrations. A subsequent Auth run passed
-43 tests, including suspension rollback, concurrent suspension of two
-administrators and the bootstrap role guard.
-An isolated Compose stack exercised real Gateway, Auth, Market and PostgreSQL:
-public offers, forged identity rejection, role changes, suspension, old JWT and
-refresh rejection, reactivation, fresh login, and auditor-only queries from
-both services. This run preceded F17.3. PostgreSQL-backed F17.3 tests exercise
-old-cookie logout, multiple rotations, concurrent logout/refresh, limited-pool
-failed logins and combined-role rejection. Additional event and filter coverage
-remains required; see the current execution report for final test results.
+`mvn verify` passed for Gateway (43 tests), Auth (59) and Market (33), with
+PostgreSQL-backed tests and Flyway migrations, including concurrent
+reactivation/login and competing suspension cases. An isolated
+F17.3 Compose stack exercised real Gateway, Auth, Market and PostgreSQL:
+public offers, forged roles, two refresh rotations, old-token replay rejection,
+old-cookie logout and rejection of both old and rotated JWTs. With a pool of
+two connections, twelve simultaneous failed logins all returned 401 and wrote
+their audit events. Additional event and filter coverage remains required.
+
+F17.4 also exercises real PostgreSQL roles in
+`PostgresRuntimePrivilegesIntegrationTest` and an isolated Compose deployment.
+The deployment's runtime credentials, not the migration-owner credentials,
+were used for SQL `SELECT`/`INSERT` and negative `UPDATE`, `DELETE`, `TRUNCATE`,
+`ALTER`, `DROP`, cross-audit read and `SET ROLE` checks. Gateway registration,
+login, public offers, offer creation, confirmed purchase, history, detail,
+refresh and logout were exercised against the same deployment. SQL mutation
+checks used a rolled-back test insertion; no audit history was deleted.

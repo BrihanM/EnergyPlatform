@@ -1,5 +1,11 @@
 # Auth Service
 
+In Compose, `AUTH_DB_USERNAME`/`AUTH_DB_PASSWORD` configure the runtime
+DataSource, while `AUTH_FLYWAY_USERNAME`/`AUTH_FLYWAY_PASSWORD` configure the
+separate migration owner. Runtime audit access is limited to read and insert.
+Outside Compose these restrictions require explicit configuration; see
+[Audit and user administration](AUDIT_AND_USER_ADMINISTRATION.md).
+
 F17.3 logout accepts the current or a retained rotated refresh cookie and
 returns 401 when no session can be identified. Rotated hashes cannot refresh a
 session. Login-failure audit runs after the authentication transaction ends;

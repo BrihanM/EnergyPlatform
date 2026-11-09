@@ -131,10 +131,23 @@ from before V7 cannot be recovered. The cookie remains a bearer capability.
 Login-failure audit runs after the authentication transaction ends, and online
 authorization rejects preexisting combined ADMIN/auditor roles until reviewed.
 
+### F17.4: PostgreSQL runtime and migration identities
+
+Compose uses four distinct login roles: a Flyway owner and a restricted runtime
+role per service. Audit tables are append-and-read for their respective runtime
+roles, and the other service has no audit access. Default grants do not open
+future tables or sequences. The Market migration owner needs a column-level
+foreign-key grant on Auth's `users.id`. Existing differently owned objects are
+not silently transferred; migration requires an explicit operational review.
+The database administrator and migration owners remain trusted, and Flyway
+credentials in the application process prevent a hard process-level boundary.
+Moving migrations to separate deployment jobs is future hardening. Non-Compose
+setups must explicitly enable the grant scripts and supply separate roles.
+
 ## Decisions requiring approval before implementation
 
 1. Further role-change audit and operational controls for admin bootstrap.
-2. Shared Flyway migration strategy for two services writing one database.
+2. Operational rollout and ownership transfer for existing database installations.
 3. Whether offer consultation is public or requires authentication.
 4. Whether purchases are always full-offer or allow partial quantities.
 5. Expiry mechanism (scheduled job, query-time derivation, or both).

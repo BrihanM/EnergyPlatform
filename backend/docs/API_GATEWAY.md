@@ -1,5 +1,11 @@
 # API Gateway
 
+Gateway has no database credentials and does not directly read or write the
+service audit tables. Runtime database restrictions do not replace Gateway's
+online authorization, identity-header sanitization or auditor-only routing.
+See [Audit and user administration](AUDIT_AND_USER_ADMINISTRATION.md) for the
+database trust boundary and outstanding coverage.
+
 Logout remains a public cookie-based Auth endpoint; Auth returns 401 for an
 unknown cookie and revokes the associated session for a retained rotated one.
 Protected requests with combined ADMIN and SECURITY_AUDITOR assignments are
