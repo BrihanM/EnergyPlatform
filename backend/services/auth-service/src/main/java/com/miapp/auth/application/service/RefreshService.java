@@ -29,12 +29,13 @@ public class RefreshService implements RefreshSessionUseCase {
     private final AccessTokenGeneratorPort accessTokens;
     private final Clock clock;
     private final RolePersistencePort roles;
+    private final AuthAuditService audit;
 
     public RefreshService(SessionPersistencePort sessions, SessionService sessionService,
                           UserPersistencePort users, AccountPersistencePort accounts,
                           AccessTokenGeneratorPort accessTokens,
                           Clock clock,
-                          RolePersistencePort roles) {
+                          RolePersistencePort roles, AuthAuditService audit) {
         this.sessions = sessions;
         this.sessionService = sessionService;
         this.users = users;
@@ -42,6 +43,7 @@ public class RefreshService implements RefreshSessionUseCase {
         this.accessTokens = accessTokens;
         this.clock = clock;
         this.roles = roles;
+        this.audit = audit;
     }
 
     @Override
@@ -51,20 +53,25 @@ public class RefreshService implements RefreshSessionUseCase {
             throw new InvalidSessionException();
         }
         String hash = sessionServiceHash(refreshToken);
+        var candidate = sessions.findCurrentByHash(hash)
+                .orElseThrow(InvalidSessionException::new);
+        var account = accounts.findByIdForUpdate(candidate.accountId())
+                .filter(value -> value.status() == AccountStatus.ACTIVE)
+                .orElseThrow(InvalidSessionException::new);
         Session session = sessions.findByRefreshTokenHashForUpdate(hash)
                 .filter(value -> value.isActiveAt(clock.instant()))
                 .orElseThrow(InvalidSessionException::new);
-        if (!sessionService.matches(refreshToken, session)) {
+        if (!session.id().equals(candidate.id()) || !session.accountId().equals(account.id())
+                || !sessionService.matches(refreshToken, session)) {
             throw new InvalidSessionException();
         }
-        var account = accounts.findById(session.accountId())
-                .filter(value -> value.status() == AccountStatus.ACTIVE)
-                .orElseThrow(InvalidSessionException::new);
         String replacement = sessionService.generateReplacementToken(session);
         User user = users.findById(account.userId()).orElseThrow(InvalidSessionException::new);
         var currentRoles = roles.findRolesByUserId(user.id());
         AccessTokenGeneratorPort.AccessToken access = accessTokens.generate(
                 user.id(), session.id(), account.username(), currentRoles, clock.instant());
+        audit.record(com.miapp.auth.domain.model.AuditEvent.Type.SESSION_REFRESHED, user.id(), user.id(),
+                com.miapp.auth.domain.model.AuditEvent.Resource.SESSION, session.id());
         return new AuthenticationResult(access.value(), access.expiresInSeconds(), replacement,
                 new AuthenticationResult.UserSummary(user.id(), user.firstName(), user.lastName(),
                         account.username(), account.email(), user.createdAt()), currentRoles);

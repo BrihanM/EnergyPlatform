@@ -15,6 +15,10 @@ spring:
               uri: ${AUTH_SERVICE_URI:http://localhost:8081}
               predicates:
                 - Path=/api/v1/integration/**
+            - id: auth-admin
+              uri: ${AUTH_SERVICE_URI:http://localhost:8081}
+              predicates:
+                - Path=/api/v1/admin/**
             - id: energy-market-service
               uri: ${ENERGY_MARKET_SERVICE_URI:http://localhost:8082}
               predicates:

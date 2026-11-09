@@ -1,5 +1,10 @@
 # Business Flows
 
+F17.2 adds account suspension with transactional session revocation and
+service-owned audit events. Reactivation requires a fresh login. See
+[Audit and user administration](AUDIT_AND_USER_ADMINISTRATION.md) for the
+implemented flows and outstanding validation.
+
 These flows describe current behavior. Publication and consultation are
 implemented by F12; automatic transactions and verification are implemented by
 F14.

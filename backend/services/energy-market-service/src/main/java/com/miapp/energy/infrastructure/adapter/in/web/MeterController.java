@@ -36,21 +36,21 @@ public class MeterController {
     @PostMapping
     ResponseEntity<ManageMeterDevicesUseCase.Provisioned> provision(@Valid @RequestBody ProvisionRequest body,
                                                        HttpServletRequest request) {
-        requireAdmin(request);
+        UUID actor = requireAdmin(request);
         return ResponseEntity.status(201).cacheControl(CacheControl.noStore())
-                .body(devices.provision(body.ownerUserId(), body.deviceIdentifier()));
+                .body(devices.provision(actor, body.ownerUserId(), body.deviceIdentifier()));
     }
 
     @PostMapping("/{id}/credential-rotation")
     ResponseEntity<ManageMeterDevicesUseCase.Provisioned> rotate(@PathVariable UUID id, HttpServletRequest request) {
-        requireAdmin(request);
-        return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(devices.rotate(id));
+        UUID actor = requireAdmin(request);
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(devices.rotate(actor, id));
     }
 
     @PatchMapping("/{id}/status")
     MeterDevice status(@PathVariable UUID id, @Valid @RequestBody StatusRequest body, HttpServletRequest request) {
-        requireAdmin(request);
-        return devices.setStatus(id, body.status());
+        UUID actor = requireAdmin(request);
+        return devices.setStatus(actor, id, body.status());
     }
 
     @PostMapping("/{id}/readings")
@@ -62,10 +62,11 @@ public class MeterController {
         return ResponseEntity.status(201).body(reading);
     }
 
-    private void requireAdmin(HttpServletRequest request) {
+    private UUID requireAdmin(HttpServletRequest request) {
         String identity = request.getHeader(OfferIdentity.USER_ID);
+        UUID actor;
         try {
-            UUID.fromString(identity);
+            actor = UUID.fromString(identity);
         } catch (IllegalArgumentException | NullPointerException exception) {
             throw new MeterException(MeterException.Kind.UNAUTHORIZED);
         }
@@ -73,6 +74,7 @@ public class MeterController {
         if (roles == null || Arrays.stream(roles.split(",")).map(String::trim).noneMatch("ADMIN"::equals)) {
             throw new MeterException(MeterException.Kind.FORBIDDEN);
         }
+        return actor;
     }
 
     public record ProvisionRequest(@NotNull UUID ownerUserId,

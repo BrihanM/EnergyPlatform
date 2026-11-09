@@ -50,4 +50,19 @@ public class AccountPersistenceAdapter implements AccountPersistencePort {
     public Optional<Account> findById(UUID id) {
         return repository.findById(id).map(AccountPersistenceMapper::toDomain);
     }
+
+    @Override
+    public Optional<Account> findByIdForUpdate(UUID id) {
+        return repository.findByIdForUpdate(id).map(AccountPersistenceMapper::toDomain);
+    }
+
+    @Override
+    public Optional<Account> findByUsernameOrEmailForUpdate(String identifier) {
+        return repository.findByIdentifierForUpdate(identifier).map(AccountPersistenceMapper::toDomain);
+    }
+
+    @Override
+    public Optional<Account> findByUserIdForUpdate(UUID userId) {
+        return repository.findByUserIdForUpdate(userId).map(AccountPersistenceMapper::toDomain);
+    }
 }

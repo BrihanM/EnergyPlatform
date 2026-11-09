@@ -30,7 +30,8 @@ class RoleManagementServiceTest {
     void setUp() {
         roles = mock(RolePersistencePort.class);
         users = mock(UserPersistencePort.class);
-        service = new RoleManagementService(roles, users);
+        service = new RoleManagementService(roles, users,
+                mock(com.miapp.auth.application.service.AuthAuditService.class));
         administrator = UUID.randomUUID();
         target = UUID.randomUUID();
         User targetUser = new User(target, "Target", "User", Instant.now(), Instant.now());
@@ -69,6 +70,18 @@ class RoleManagementServiceTest {
         service.assign(administrator, target, Role.SECURITY_AUDITOR);
 
         verify(roles).assignRole(administrator, target, Role.SECURITY_AUDITOR);
-        verify(roles).findRolesByUserId(target);
+        verify(roles, org.mockito.Mockito.times(2)).findRolesByUserId(target);
+    }
+
+    @Test
+    void preventsCombiningAdministratorAndAuditorRoles() {
+        when(roles.hasAdminRole(administrator)).thenReturn(true);
+        when(roles.findRolesByUserId(target)).thenReturn(EnumSet.of(Role.ADMIN));
+        assertThatThrownBy(() -> service.assign(administrator, target, Role.SECURITY_AUDITOR))
+                .isInstanceOf(InvalidRoleOperationException.class);
+        when(roles.findRolesByUserId(target)).thenReturn(EnumSet.of(Role.SECURITY_AUDITOR));
+        assertThatThrownBy(() -> service.assign(administrator, target, Role.ADMIN))
+                .isInstanceOf(InvalidRoleOperationException.class);
+        verify(roles, never()).assignRole(any(), any(), any());
     }
 }

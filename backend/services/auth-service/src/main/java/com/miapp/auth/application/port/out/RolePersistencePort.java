@@ -21,4 +21,7 @@ public interface RolePersistencePort {
     boolean hasAdminRole(UUID userId);
 
     long countActiveAdministrators();
+
+    /** Serializes mutations that may change the set of active administrators. */
+    void lockAdministratorInvariant();
 }

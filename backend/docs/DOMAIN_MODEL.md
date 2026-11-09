@@ -3,8 +3,9 @@
 ## Status and scope
 
 This document includes both implemented and proposed design. F12, F14 and F16
-implement offers, transactions, devices and readings; other contexts remain
-design-only. Facts marked **Existing** come from
+implement offers, transactions, devices and readings; Auth also implements
+roles, sessions, user administration and service-owned audit events. Other
+proposals remain design-only. Facts marked **Existing** come from
 the current repository; facts marked **Proposed** require implementation and review.
 
 The business context is a simulated prosumer market. No physical energy dispatch,
@@ -16,7 +17,7 @@ payment, settlement, or real grid integration is performed.
 |---|---|---|
 | Identity and access | `auth-service` | `users`, `accounts`, `sessions`, password and JWT/refresh-token lifecycle |
 | Energy market | `energy-market-service` | Offers, purchases, transactions, devices, readings, simulated verification |
-| Audit and perimeter | API Gateway initially; durable audit ownership to be decided | Request metadata, correlation, security events, audit queries |
+| Audit and perimeter | Auth and Market own their durable events; Gateway handles perimeter telemetry | Security and business events, correlation, auditor queries |
 
 `EnergyOffer` is the aggregate root for publication lifecycle. An offer may be
 reserved and acquired only through an application use case that enforces its state
@@ -43,8 +44,8 @@ The existing Auth migrations define:
   `email`, BCrypt `password_hash`, `status`, and audit timestamps.
 - `sessions` linked to `accounts`, with only a refresh-token hash.
 
-The Auth domain currently models `AccountStatus` (`ACTIVE`, `LOCKED`, `DISABLED`);
-it does not currently model the requested business roles. The market service must
+The Auth domain models `AccountStatus` (`ACTIVE`, `LOCKED`, `DISABLED`) and the
+official roles `NORMAL_USER`, `ADMIN` and `SECURITY_AUDITOR`. The market service must
 not duplicate `User` or `Account` and must accept the validated JWT `sub` UUID as
 the user reference. It must not copy names, emails, passwords, JWTs, or refresh
 tokens into market records.

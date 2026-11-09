@@ -41,7 +41,11 @@ public class SessionAuthorizationService {
                 .filter(value -> value.status() == AccountStatus.ACTIVE && value.userId().equals(userId))
                 .orElseThrow(InvalidSessionException::new);
         users.findById(userId).orElseThrow(InvalidSessionException::new);
-        return new Authorization(userId, account.username(), roles.findRolesByUserId(userId));
+        Set<Role> currentRoles = roles.findRolesByUserId(userId);
+        if (currentRoles.contains(Role.ADMIN) && currentRoles.contains(Role.SECURITY_AUDITOR)) {
+            throw new InvalidSessionException();
+        }
+        return new Authorization(userId, account.username(), currentRoles);
     }
 
     public record Authorization(UUID userId, String username, Set<Role> roles) {}

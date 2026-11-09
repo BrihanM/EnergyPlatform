@@ -38,10 +38,13 @@ class RefreshAccountStatusTest {
     private final AccessTokenGeneratorPort tokens = mock(AccessTokenGeneratorPort.class);
     private final RolePersistencePort roles = mock(RolePersistencePort.class);
     private final RefreshService service = new RefreshService(sessions, sessionService, users, accounts,
-            tokens, Clock.fixed(now, ZoneOffset.UTC), roles);
+            tokens, Clock.fixed(now, ZoneOffset.UTC), roles,
+            mock(com.miapp.auth.application.service.AuthAuditService.class));
 
     private void validSession() {
         when(sessionService.hash("refresh")).thenReturn("hash");
+        when(sessions.findCurrentByHash("hash")).thenReturn(Optional.of(
+                new SessionPersistencePort.SessionReference(session.id(), session.accountId())));
         when(sessions.findByRefreshTokenHashForUpdate("hash")).thenReturn(Optional.of(session));
         when(sessionService.matches("refresh", session)).thenReturn(true);
     }
@@ -54,7 +57,7 @@ class RefreshAccountStatusTest {
     void inactiveAccountsCannotRefreshOrRotateTheirSession() {
         validSession();
         for (AccountStatus status : new AccountStatus[] {AccountStatus.LOCKED, AccountStatus.DISABLED}) {
-            when(accounts.findById(accountId)).thenReturn(Optional.of(account(status)));
+            when(accounts.findByIdForUpdate(accountId)).thenReturn(Optional.of(account(status)));
             assertThatThrownBy(() -> service.refresh("refresh")).isInstanceOf(InvalidSessionException.class);
         }
         verify(sessionService, never()).generateReplacementToken(any());
@@ -64,7 +67,7 @@ class RefreshAccountStatusTest {
     @Test
     void activeAccountRefreshStillRotatesTheSession() {
         validSession();
-        when(accounts.findById(accountId)).thenReturn(Optional.of(account(AccountStatus.ACTIVE)));
+        when(accounts.findByIdForUpdate(accountId)).thenReturn(Optional.of(account(AccountStatus.ACTIVE)));
         when(users.findById(userId)).thenReturn(Optional.of(new User(userId, "Test", "User", now, now)));
         when(roles.findRolesByUserId(userId)).thenReturn(Set.of(Role.NORMAL_USER));
         when(sessionService.generateReplacementToken(session)).thenReturn("replacement");

@@ -103,6 +103,34 @@ network access and managed secrets. A future suspension operation must revoke
 all sessions transactionally; changing account status alone and subsequently
 reactivating it does not permanently invalidate those sessions.
 
+### F17.2 prerequisites identified before implementation
+
+The existing last-administrator check counts active administrators without
+serializing concurrent role revocations. Concurrent changes could each observe
+another administrator and remove both. Suspension must coordinate with role
+changes using a common database lock before checking that invariant.
+
+Login currently reads account status and creates a session without a shared
+transactional account lock. A concurrent suspension could therefore revoke
+existing sessions and then be followed by a newly created session based on
+the earlier read. Login, refresh and suspension need a consistent account-first
+lock order, with status rechecked under the lock, so that suspension and
+session revocation commit atomically without refresh restoring a revoked
+session. This changes transactional coordination, not the public contracts.
+
+F17.2 adds the shared ADMIN-role lock and account-first coordination for login,
+refresh and suspension. Audit persistence belongs to the service that owns each
+operation. The lock and transaction boundaries require further concurrent and
+cross-service validation before acceptance. New role assignments prohibit
+combining ADMIN and SECURITY_AUDITOR; existing assignments are not migrated.
+
+F17.3 retains rotated refresh-token hashes bound to their session until session
+expiry. They are usable only for logout, never refresh; unknown cookies return
+401. Cleanup locks expired sessions before deleting history. A historical hash
+from before V7 cannot be recovered. The cookie remains a bearer capability.
+Login-failure audit runs after the authentication transaction ends, and online
+authorization rejects preexisting combined ADMIN/auditor roles until reviewed.
+
 ## Decisions requiring approval before implementation
 
 1. Further role-change audit and operational controls for admin bootstrap.

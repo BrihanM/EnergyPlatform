@@ -9,7 +9,7 @@ public interface ManageMeterDevicesUseCase {
         @Override public String toString() { return "Provisioned[credential=REDACTED]"; }
     }
 
-    Provisioned provision(UUID ownerId, String identifier);
-    Provisioned rotate(UUID id);
-    MeterDevice setStatus(UUID id, MeterDevice.Status status);
+    Provisioned provision(UUID actorId, UUID ownerId, String identifier);
+    Provisioned rotate(UUID actorId, UUID id);
+    MeterDevice setStatus(UUID actorId, UUID id, MeterDevice.Status status);
 }

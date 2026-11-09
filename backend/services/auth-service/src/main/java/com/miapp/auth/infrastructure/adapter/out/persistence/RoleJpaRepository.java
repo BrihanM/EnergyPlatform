@@ -6,6 +6,10 @@ import java.util.UUID;
 
 interface RoleJpaRepository extends JpaRepository<RoleJpaEntity, String> {
 
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @org.springframework.data.jpa.repository.Query("select r from RoleJpaEntity r where r.code = 'ADMIN'")
+    java.util.Optional<RoleJpaEntity> lockAdministratorInvariant();
+
     interface RoleProjection {
         UUID getUserId();
         String getRoleCode();

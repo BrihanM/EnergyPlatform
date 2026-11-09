@@ -2,6 +2,7 @@ package com.miapp.auth.infrastructure.config;
 
 import com.miapp.auth.application.port.out.AccountPersistencePort;
 import com.miapp.auth.application.port.out.RolePersistencePort;
+import com.miapp.auth.application.service.AuthAuditService;
 import com.miapp.auth.domain.model.AccountStatus;
 import com.miapp.auth.domain.model.Role;
 import org.slf4j.Logger;
@@ -23,19 +24,23 @@ public class AdminBootstrap {
 
     private final AccountPersistencePort accounts;
     private final RolePersistencePort roles;
+    private final AuthAuditService audit;
     private final String username;
 
     public AdminBootstrap(AccountPersistencePort accounts,
                           RolePersistencePort roles,
+                          AuthAuditService audit,
                           @Value("${security.rbac.bootstrap-admin-username:}") String username) {
         this.accounts = accounts;
         this.roles = roles;
+        this.audit = audit;
         this.username = username == null ? "" : username.trim().toLowerCase(java.util.Locale.ROOT);
     }
 
     @EventListener(ApplicationReadyEvent.class)
     @Transactional
     public void bootstrap() {
+        roles.lockAdministratorInvariant();
         if (username.isBlank() || roles.countActiveAdministrators() > 0) {
             return;
         }
@@ -44,7 +49,12 @@ public class AdminBootstrap {
             LOGGER.warn("RBAC bootstrap skipped: configured account is absent or inactive");
             return;
         }
+        if (roles.findRolesByUserId(account.get().userId()).contains(Role.SECURITY_AUDITOR)) {
+            LOGGER.warn("RBAC bootstrap skipped: configured account has the auditor role");
+            return;
+        }
         roles.assignRole(account.get().userId(), account.get().userId(), Role.ADMIN);
+        audit.recordSystemRoleAssignment(account.get().userId(), Role.ADMIN);
         LOGGER.info("RBAC bootstrap assigned the initial administrator role to the configured account");
     }
 }

@@ -15,6 +15,10 @@ import com.miapp.auth.domain.model.AccountStatus;
 import com.miapp.auth.domain.model.User;
 import org.springframework.stereotype.Service;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 import java.time.Clock;
 import java.util.Set;
 import com.miapp.auth.domain.model.Role;
@@ -38,12 +42,15 @@ public class LoginService implements LoginUseCase {
     private final AccessTokenGeneratorPort accessTokenGenerator;
     private final Clock clock;
     private final RolePersistencePort rolePersistencePort;
+    private final AuthAuditService audit;
+    private final TransactionTemplate transactions;
 
     public LoginService(AccountPersistencePort accountPersistencePort,
                         UserPersistencePort userPersistencePort,
-                        PasswordHashingPort passwordHashingPort) {
+                        PasswordHashingPort passwordHashingPort, AuthAuditService audit,
+                        PlatformTransactionManager transactionManager) {
         this(accountPersistencePort, userPersistencePort, passwordHashingPort,
-                null, null, null, null);
+                null, null, null, null, audit, transactionManager);
     }
 
     @Autowired
@@ -53,7 +60,8 @@ public class LoginService implements LoginUseCase {
                         SessionService sessionService,
                         AccessTokenGeneratorPort accessTokenGenerator,
                         Clock clock,
-                        RolePersistencePort rolePersistencePort) {
+                        RolePersistencePort rolePersistencePort, AuthAuditService audit,
+                        PlatformTransactionManager transactionManager) {
         this.accountPersistencePort = accountPersistencePort;
         this.userPersistencePort = userPersistencePort;
         this.passwordHashingPort = passwordHashingPort;
@@ -61,13 +69,25 @@ public class LoginService implements LoginUseCase {
         this.accessTokenGenerator = accessTokenGenerator;
         this.clock = clock;
         this.rolePersistencePort = rolePersistencePort;
+        this.audit = audit;
+        this.transactions = new TransactionTemplate(transactionManager);
     }
 
     @Override
+    @Transactional(propagation = Propagation.NEVER)
     public LoginResult login(LoginCommand command) {
+        try {
+            return transactions.execute(status -> authenticate(command));
+        } catch (InvalidCredentialsException exception) {
+            audit.failedLogin();
+            throw exception;
+        }
+    }
+
+    private LoginResult authenticate(LoginCommand command) {
         validateCommand(command);
         String identifier = normalizeIdentifier(command.identifier());
-        Account account = accountPersistencePort.findByUsernameOrEmail(identifier)
+        Account account = accountPersistencePort.findByUsernameOrEmailForUpdate(identifier)
                 .orElse(null);
 
         if (account == null) {
@@ -85,6 +105,8 @@ public class LoginService implements LoginUseCase {
                 user.id(), user.firstName(), user.lastName(),
                 account.username(), account.email(), user.createdAt());
         if (sessionService == null) {
+            audit.record(com.miapp.auth.domain.model.AuditEvent.Type.LOGIN_SUCCEEDED, user.id(), user.id(),
+                    com.miapp.auth.domain.model.AuditEvent.Resource.ACCOUNT, account.id());
             return new LoginResult(true, summary);
         }
         CreateSessionResult session = sessionService.create(account.id());
@@ -93,6 +115,8 @@ public class LoginService implements LoginUseCase {
                 : rolePersistencePort.findRolesByUserId(user.id());
         AccessTokenGeneratorPort.AccessToken accessToken =
                 accessTokenGenerator.generate(user.id(), session.session().id(), account.username(), roles, clock.instant());
+        audit.record(com.miapp.auth.domain.model.AuditEvent.Type.LOGIN_SUCCEEDED, user.id(), user.id(),
+                com.miapp.auth.domain.model.AuditEvent.Resource.SESSION, session.session().id());
         return new LoginResult(true, summary, accessToken.value(),
                 accessToken.expiresInSeconds(), session.refreshToken(), roles);
     }

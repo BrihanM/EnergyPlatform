@@ -14,9 +14,18 @@ import java.util.UUID;
  */
 interface SessionJpaRepository extends JpaRepository<SessionJpaEntity, UUID> {
 
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select s from SessionJpaEntity s where s.id = :id")
+    Optional<SessionJpaEntity> findByIdForUpdate(@Param("id") UUID id);
+
     Optional<SessionJpaEntity> findByRefreshTokenHash(String refreshTokenHash);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select s from SessionJpaEntity s where s.refreshTokenHash = :hash")
     Optional<SessionJpaEntity> findByRefreshTokenHashForUpdate(@Param("hash") String hash);
+
+    @org.springframework.data.jpa.repository.Modifying
+    @Query("update SessionJpaEntity s set s.revokedAt = :now, s.updatedAt = :now "
+            + "where s.accountId = :accountId and s.revokedAt is null")
+    int revokeAllForAccount(@Param("accountId") UUID accountId, @Param("now") java.time.Instant now);
 }

@@ -12,6 +12,8 @@ import com.miapp.auth.domain.model.AccountStatus;
 import com.miapp.auth.domain.model.User;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.SimpleTransactionStatus;
 
 import java.time.Instant;
 import java.util.Optional;
@@ -39,7 +41,10 @@ class LoginServiceTest {
         accountPersistencePort = mock(AccountPersistencePort.class);
         userPersistencePort = mock(UserPersistencePort.class);
         passwordHashingPort = mock(PasswordHashingPort.class);
-        service = new LoginService(accountPersistencePort, userPersistencePort, passwordHashingPort);
+        var transactionManager = mock(PlatformTransactionManager.class);
+        when(transactionManager.getTransaction(any())).thenAnswer(invocation -> new SimpleTransactionStatus());
+        service = new LoginService(accountPersistencePort, userPersistencePort, passwordHashingPort,
+                mock(com.miapp.auth.application.service.AuthAuditService.class), transactionManager);
         Instant now = Instant.now();
         user = new User(UUID.randomUUID(), "Brayan", "Marín", now, now);
         account = new Account(UUID.randomUUID(), user.id(), "brayan.marin",
@@ -50,7 +55,7 @@ class LoginServiceTest {
 
     @Test
     void logsInWithUsername() {
-        when(accountPersistencePort.findByUsernameOrEmail("brayan.marin"))
+        when(accountPersistencePort.findByUsernameOrEmailForUpdate("brayan.marin"))
                 .thenReturn(Optional.of(account));
 
         LoginResult result = service.login(new LoginCommand(" Brayan.Marin ", "ContraseñaSegura1"));
@@ -62,18 +67,18 @@ class LoginServiceTest {
 
     @Test
     void logsInWithEmailCaseInsensitively() {
-        when(accountPersistencePort.findByUsernameOrEmail("brayan@example.com"))
+        when(accountPersistencePort.findByUsernameOrEmailForUpdate("brayan@example.com"))
                 .thenReturn(Optional.of(account));
 
         LoginResult result = service.login(new LoginCommand("BRAYAN@EXAMPLE.COM", "ContraseñaSegura1"));
 
         assertThat(result.authenticated()).isTrue();
-        verify(accountPersistencePort).findByUsernameOrEmail("brayan@example.com");
+        verify(accountPersistencePort).findByUsernameOrEmailForUpdate("brayan@example.com");
     }
 
     @Test
     void usesGenericErrorForUnknownAccountAndPerformsDummyComparison() {
-        when(accountPersistencePort.findByUsernameOrEmail("unknown")).thenReturn(Optional.empty());
+        when(accountPersistencePort.findByUsernameOrEmailForUpdate("unknown")).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.login(new LoginCommand("unknown", "wrong")))
                 .isInstanceOf(InvalidCredentialsException.class)
@@ -85,7 +90,7 @@ class LoginServiceTest {
 
     @Test
     void usesSameGenericErrorForWrongPassword() {
-        when(accountPersistencePort.findByUsernameOrEmail("brayan.marin"))
+        when(accountPersistencePort.findByUsernameOrEmailForUpdate("brayan.marin"))
                 .thenReturn(Optional.of(account));
         when(passwordHashingPort.matches("wrong", "$2a$hash")).thenReturn(false);
 
@@ -99,7 +104,7 @@ class LoginServiceTest {
         Account locked = new Account(account.id(), account.userId(), account.username(),
                 account.email(), account.passwordHash(), AccountStatus.LOCKED,
                 account.createdAt(), account.updatedAt());
-        when(accountPersistencePort.findByUsernameOrEmail("brayan.marin"))
+        when(accountPersistencePort.findByUsernameOrEmailForUpdate("brayan.marin"))
                 .thenReturn(Optional.of(locked));
 
         assertThatThrownBy(() -> service.login(new LoginCommand("brayan.marin", "ContraseñaSegura1")))
@@ -111,7 +116,7 @@ class LoginServiceTest {
     void doesNotExposeCredentialsInCommandOrResult() {
         assertThat(new LoginCommand("brayan.marin", "ContraseñaSegura1").toString())
                 .doesNotContain("brayan.marin", "ContraseñaSegura1");
-        when(accountPersistencePort.findByUsernameOrEmail("brayan.marin"))
+        when(accountPersistencePort.findByUsernameOrEmailForUpdate("brayan.marin"))
                 .thenReturn(Optional.of(account));
         LoginResult result = service.login(new LoginCommand("brayan.marin", "ContraseñaSegura1"));
         assertThat(result.toString()).doesNotContain("password", "hash", "ContraseñaSegura1");

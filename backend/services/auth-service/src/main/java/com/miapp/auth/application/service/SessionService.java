@@ -54,9 +54,11 @@ public class SessionService {
     }
 
     public String generateReplacementToken(Session session) {
+        Instant now = clock.instant();
+        sessionPersistence.rememberRotatedHash(session, now);
         String refreshToken = tokenGenerator.generate();
         Session rotated = session.replaceRefreshToken(tokenHashing.hash(refreshToken),
-                clock.instant().plus(expiration), clock.instant());
+                now.plus(expiration), now);
         sessionPersistence.save(rotated);
         return refreshToken;
     }

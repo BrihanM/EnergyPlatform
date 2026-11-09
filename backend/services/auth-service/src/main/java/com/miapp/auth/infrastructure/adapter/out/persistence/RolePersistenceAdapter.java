@@ -63,4 +63,11 @@ class RolePersistenceAdapter implements RolePersistencePort {
     public long countActiveAdministrators() {
         return repository.countActiveAdministrators();
     }
+
+    @Override
+    @Transactional
+    public void lockAdministratorInvariant() {
+        repository.lockAdministratorInvariant().orElseThrow(
+                () -> new IllegalStateException("Administrator role is missing"));
+    }
 }

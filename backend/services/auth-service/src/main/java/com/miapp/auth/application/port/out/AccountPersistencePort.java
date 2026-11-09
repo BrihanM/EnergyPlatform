@@ -40,4 +40,10 @@ public interface AccountPersistencePort {
     Optional<Account> findByUsernameOrEmail(String identifier);
 
     Optional<Account> findById(UUID id);
+
+    Optional<Account> findByIdForUpdate(UUID id);
+
+    Optional<Account> findByUsernameOrEmailForUpdate(String identifier);
+
+    Optional<Account> findByUserIdForUpdate(UUID userId);
 }

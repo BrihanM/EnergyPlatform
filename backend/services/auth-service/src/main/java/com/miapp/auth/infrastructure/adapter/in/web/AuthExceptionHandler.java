@@ -36,7 +36,10 @@ public class AuthExceptionHandler {
         return response(HttpStatus.CONFLICT, "Conflict", exception.getMessage(), request);
     }
 
-    @ExceptionHandler({InvalidRegistrationException.class, MethodArgumentNotValidException.class})
+    @ExceptionHandler({InvalidRegistrationException.class, MethodArgumentNotValidException.class,
+            IllegalArgumentException.class,
+            org.springframework.web.method.annotation.MethodArgumentTypeMismatchException.class,
+            org.springframework.web.bind.MissingServletRequestParameterException.class})
     ResponseEntity<ApiErrorResponse> handleValidation(Exception exception,
                                                        HttpServletRequest request) {
         String message = exception instanceof InvalidRegistrationException
@@ -65,7 +68,8 @@ public class AuthExceptionHandler {
     @ExceptionHandler(InvalidRoleOperationException.class)
     ResponseEntity<ApiErrorResponse> handleRoleOperation(InvalidRoleOperationException exception,
                                                          HttpServletRequest request) {
-        int status = "Administrator role required".equals(exception.getMessage())
+        int status = ("Administrator role required".equals(exception.getMessage())
+                || "Auditor role required".equals(exception.getMessage()))
                 ? HttpStatus.FORBIDDEN.value() : HttpStatus.BAD_REQUEST.value();
         HttpStatus httpStatus = HttpStatus.valueOf(status);
         return response(httpStatus, httpStatus == HttpStatus.FORBIDDEN ? "Forbidden" : "Bad Request",

@@ -66,6 +66,7 @@ class EnergyTransactionIntegrationTest {
     @Autowired JdbcEnergyOfferRepository offers;
     @Autowired JdbcEnergyTransactionRepository transactions;
     @Autowired EnergyTransactionService service;
+    @Autowired com.miapp.energy.application.service.MarketAuditService audit;
     @Autowired PlatformTransactionManager transactionManager;
 
     @BeforeEach
@@ -125,6 +126,10 @@ class EnergyTransactionIntegrationTest {
         assertThat(jsonId(second)).isEqualTo(jsonId(first));
         assertThat(count("energy_market.energy_transactions")).isEqualTo(1);
         assertThat(count("energy_market.operator_verifications")).isEqualTo(1);
+        assertThat(jdbc.queryForObject("""
+                SELECT count(*) FROM energy_market.audit_events
+                WHERE actor_id = ? AND event_type IN ('PURCHASE_STARTED', 'PURCHASE_CONFIRMED')
+                """, Integer.class, buyer)).isEqualTo(2);
     }
 
     @Test
@@ -183,7 +188,7 @@ class EnergyTransactionIntegrationTest {
         UUID buyer = user("Buyer");
         UUID offerId = offer(seller, Instant.now().plusSeconds(3600));
         EnergyTransactionService failingService = new EnergyTransactionService(offers, transactions,
-                ignored -> { throw new IllegalStateException("simulator unavailable"); });
+                ignored -> { throw new IllegalStateException("simulator unavailable"); }, audit);
         TransactionTemplate template = new TransactionTemplate(transactionManager);
 
         assertThatThrownBy(() -> template.execute(status -> {
@@ -195,6 +200,8 @@ class EnergyTransactionIntegrationTest {
         assertThat(count("energy_market.energy_transactions")).isZero();
         assertThat(count("energy_market.operator_verifications")).isZero();
         assertThat(count("energy_market.transaction_idempotency_keys")).isZero();
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM energy_market.audit_events WHERE actor_id = ?",
+                Integer.class, buyer)).isZero();
     }
 
     @Test
@@ -216,6 +223,107 @@ class EnergyTransactionIntegrationTest {
                         .contentType("application/json")
                         .content("{\"offerId\":\"%s\"}".formatted(offerId)))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void auditQueryRequiresAuditorAndValidatesFilters() throws Exception {
+        UUID seller = user("Seller");
+        UUID buyer = user("Buyer");
+        UUID offerId = offer(seller, Instant.now().plusSeconds(3600));
+        service.purchase(buyer, offerId, "audit-query");
+        String path = "/api/v1/market/audit/events";
+        mvc.perform(get(path).param("page", "0").param("size", "1")
+                        .param("user", buyer.toString()).param("type", "PURCHASE_CONFIRMED")
+                        .header("X-Authenticated-User-Id", UUID.randomUUID())
+                        .header("X-Authenticated-Roles", "SECURITY_AUDITOR"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[0].actorId").value(buyer.toString()))
+                .andExpect(jsonPath("$.items[0].type").value("PURCHASE_CONFIRMED"));
+        for (String role : List.of("ADMIN", "NORMAL_USER")) {
+            mvc.perform(get(path).param("page", "0").param("size", "1")
+                            .header("X-Authenticated-User-Id", UUID.randomUUID())
+                            .header("X-Authenticated-Roles", role))
+                    .andExpect(status().isForbidden());
+        }
+        mvc.perform(get(path).param("page", "0").param("size", "1")
+                        .param("from", "2026-01-02T00:00:00Z").param("to", "2026-01-01T00:00:00Z")
+                        .header("X-Authenticated-User-Id", UUID.randomUUID())
+                        .header("X-Authenticated-Roles", "SECURITY_AUDITOR"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void offerLifecyclePersistsAuditableFacts() throws Exception {
+        UUID seller = user("Seller");
+        String body = """
+                {"energyAmountKwh":10,"pricePerKwh":20,"expiresAt":"%s"}
+                """.formatted(Instant.now().plusSeconds(3600));
+        String created = mvc.perform(post("/api/v1/offers").header("X-Authenticated-User-Id", seller)
+                        .header("X-Authenticated-Roles", "NORMAL_USER").contentType("application/json").content(body))
+                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+        String id = com.jayway.jsonpath.JsonPath.read(created, "$.id");
+        mvc.perform(put("/api/v1/offers/{id}", id).header("X-Authenticated-User-Id", seller)
+                        .header("X-Authenticated-Roles", "NORMAL_USER").contentType("application/json").content(body))
+                .andExpect(status().isOk());
+        mvc.perform(delete("/api/v1/offers/{id}", id).header("X-Authenticated-User-Id", seller)
+                        .header("X-Authenticated-Roles", "NORMAL_USER"))
+                .andExpect(status().isOk());
+        assertThat(jdbc.queryForList("""
+                SELECT event_type FROM energy_market.audit_events WHERE resource_id = ? ORDER BY occurred_at
+                """, String.class, UUID.fromString(id)))
+                .containsExactly("OFFER_CREATED", "OFFER_UPDATED", "OFFER_CANCELLED");
+    }
+
+    @Test
+    void auditFiltersAndPaginationAreBounded() throws Exception {
+        UUID seller = user("Seller");
+        UUID buyer = user("Buyer");
+        UUID offerId = offer(seller, Instant.now().plusSeconds(3600));
+        Instant from = Instant.now().minusSeconds(10);
+        service.purchase(buyer, offerId, "filter-audit");
+        Instant to = Instant.now().plusSeconds(10);
+        String path = "/api/v1/market/audit/events";
+        String actor = UUID.randomUUID().toString();
+        var first = mvc.perform(get(path).param("page", "0").param("size", "1")
+                        .param("user", buyer.toString()).param("from", from.toString()).param("to", to.toString())
+                        .header("X-Authenticated-User-Id", actor).header("X-Authenticated-Roles", "SECURITY_AUDITOR"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.hasNext").value(true))
+                .andReturn().getResponse().getContentAsString();
+        var second = mvc.perform(get(path).param("page", "1").param("size", "1")
+                        .param("user", buyer.toString()).param("from", from.toString()).param("to", to.toString())
+                        .header("X-Authenticated-User-Id", actor).header("X-Authenticated-Roles", "SECURITY_AUDITOR"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.hasNext").value(false))
+                .andReturn().getResponse().getContentAsString();
+        Instant firstTime = Instant.parse(com.jayway.jsonpath.JsonPath.read(first, "$.items[0].occurredAt"));
+        Instant secondTime = Instant.parse(com.jayway.jsonpath.JsonPath.read(second, "$.items[0].occurredAt"));
+        assertThat(firstTime).isAfterOrEqualTo(secondTime);
+        mvc.perform(get(path).param("page", "2").param("size", "1").param("user", buyer.toString())
+                        .header("X-Authenticated-User-Id", actor).header("X-Authenticated-Roles", "SECURITY_AUDITOR"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.items").isEmpty());
+        mvc.perform(get(path).param("page", "0").param("size", "101")
+                        .header("X-Authenticated-User-Id", actor).header("X-Authenticated-Roles", "SECURITY_AUDITOR"))
+                .andExpect(status().isBadRequest());
+        mvc.perform(get(path).param("page", "0").param("size", "1")).andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void rejectedPurchaseRecordsItsActualOutcome() {
+        UUID seller = user("Seller");
+        UUID buyer = user("Buyer");
+        UUID offerId = offer(seller, Instant.now().plusSeconds(3600));
+        var rejecting = new EnergyTransactionService(offers, transactions, offer ->
+                new com.miapp.energy.domain.model.EnergyTransferResult(false, offer.energyAmountKwh(),
+                        UUID.randomUUID(), Instant.now(), "Simulated rejection"), audit);
+        new TransactionTemplate(transactionManager).executeWithoutResult(status ->
+                rejecting.purchase(buyer, offerId, "rejected-audit"));
+        assertThat(jdbc.queryForList("""
+                SELECT event_type FROM energy_market.audit_events
+                WHERE actor_id = ? ORDER BY occurred_at
+                """, String.class, buyer)).containsExactly("PURCHASE_STARTED", "PURCHASE_REJECTED");
+        assertThat(jdbc.queryForObject("""
+                SELECT result FROM energy_market.audit_events
+                WHERE actor_id = ? AND event_type = 'PURCHASE_REJECTED'
+                """, String.class, buyer)).isEqualTo("REJECTED");
     }
 
     private Object concurrentPurchase(UUID buyer, UUID offerId, String key,

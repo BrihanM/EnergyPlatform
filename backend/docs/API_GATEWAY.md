@@ -1,5 +1,15 @@
 # API Gateway
 
+Logout remains a public cookie-based Auth endpoint; Auth returns 401 for an
+unknown cookie and revokes the associated session for a retained rotated one.
+Protected requests with combined ADMIN and SECURITY_AUDITOR assignments are
+rejected by online authorization pending operator reconciliation.
+
+The `/api/v1/admin/**` route forwards to Auth; Auth and Market audit queries
+remain separate. Protected requests retain online Auth validation and trusted
+identity propagation. See [Audit and user administration](AUDIT_AND_USER_ADMINISTRATION.md)
+for permissions and current validation limits.
+
 ## Responsabilidad
 
 `api-gateway` es el punto de entrada HTTP externo. Centraliza routing,

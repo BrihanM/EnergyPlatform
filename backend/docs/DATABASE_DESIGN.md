@@ -1,5 +1,15 @@
 # PostgreSQL Database Design
 
+Auth V7 adds `rotated_refresh_token_history`, containing only refresh hashes
+and their session references. Expired-session history is removed by a bounded
+scheduled cleanup. See [Audit and user administration](AUDIT_AND_USER_ADMINISTRATION.md)
+for the retention and database-privilege limitations.
+
+F17.2 adds Auth's `auth_audit_events` (V6) and Market's
+`energy_market.audit_events` (V5). Their actual columns, ownership and
+limitations are described in [Audit and user administration](AUDIT_AND_USER_ADMINISTRATION.md);
+the proposed audit schema below is not their physical schema.
+
 ## Design status
 
 The database remains one PostgreSQL instance and one normalized relational

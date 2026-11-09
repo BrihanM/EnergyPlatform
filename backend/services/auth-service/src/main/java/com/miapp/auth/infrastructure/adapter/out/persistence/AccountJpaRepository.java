@@ -17,4 +17,17 @@ interface AccountJpaRepository extends JpaRepository<AccountJpaEntity, UUID> {
     Optional<AccountJpaEntity> findByUsername(String username);
 
     Optional<AccountJpaEntity> findByUsernameOrEmail(String username, String email);
+
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @org.springframework.data.jpa.repository.Query("select a from AccountJpaEntity a where a.id = :id")
+    Optional<AccountJpaEntity> findByIdForUpdate(java.util.UUID id);
+
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @org.springframework.data.jpa.repository.Query(
+            "select a from AccountJpaEntity a where a.username = :identifier or a.email = :identifier")
+    Optional<AccountJpaEntity> findByIdentifierForUpdate(String identifier);
+
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @org.springframework.data.jpa.repository.Query("select a from AccountJpaEntity a where a.userId = :userId")
+    Optional<AccountJpaEntity> findByUserIdForUpdate(UUID userId);
 }

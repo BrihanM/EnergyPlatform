@@ -1,5 +1,16 @@
 # Auth Service
 
+F17.3 logout accepts the current or a retained rotated refresh cookie and
+returns 401 when no session can be identified. Rotated hashes cannot refresh a
+session. Login-failure audit runs after the authentication transaction ends;
+see [Audit and user administration](AUDIT_AND_USER_ADMINISTRATION.md).
+
+F17.2 adds administrator-only user listing and account state changes, together
+with an auditor-only query of Auth-owned persistent events. Suspension revokes
+sessions transactionally; reactivation does not restore them. See
+[Audit and user administration](AUDIT_AND_USER_ADMINISTRATION.md) for the
+contracts, transaction boundaries and pending validation.
+
 ## Responsabilidad y arquitectura
 
 `auth-service` es responsable de la identidad de usuario y de las cuentas
@@ -230,15 +241,12 @@ transacción. Las solicitudes inválidas responden con el mensaje genérico
 
 ### `POST /api/v1/auth/logout`
 
-Busca la sesión mediante el hash del refresh token, la revoca lógicamente si
-existe y siempre devuelve `204 No Content` junto con una cookie de eliminación
-con el mismo nombre, dominio y path. La operación es idempotente y no revela
-si la sesión existía. Refresh y logout bloquean la sesión durante la
-transacción para evitar que una rotación concurrente restaure una revocación.
-El logout identifica la sesión por el refresh token vigente: si otro cliente
-ya lo rotó, una cookie anterior no identifica la sesión y el logout idempotente
-puede responder 204 sin revocarla. El cierre coordinado entre pestañas durante
-una rotación concurrente requiere una solución de sesiones adicional.
+Busca la sesión por el hash del refresh token vigente o uno rotado que aún se
+conserve. Revoca la sesión y devuelve `204 No Content` con una cookie de
+eliminación; una sesión identificable ya revocada también devuelve 204. Una
+cookie ausente o desconocida devuelve 401. Refresh y logout bloquean primero
+la cuenta y después la sesión, evitando que una rotación restaure una revocación.
+Los hashes anteriores a la migración V7 no pueden recuperarse.
 
 El frontend debe enviar login, refresh y logout con `withCredentials: true`.
 

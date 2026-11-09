@@ -21,19 +21,21 @@ public class EnergyTransactionService {
     private final EnergyTransactionRepository transactions;
     private final EnergyTransferSimulator simulator;
     private final Clock clock;
+    private final MarketAuditService audit;
 
     @Autowired
     public EnergyTransactionService(EnergyOfferRepository offers, EnergyTransactionRepository transactions,
-                                    EnergyTransferSimulator simulator) {
-        this(offers, transactions, simulator, Clock.systemUTC());
+                                    EnergyTransferSimulator simulator, MarketAuditService audit) {
+        this(offers, transactions, simulator, Clock.systemUTC(), audit);
     }
 
     EnergyTransactionService(EnergyOfferRepository offers, EnergyTransactionRepository transactions,
-                             EnergyTransferSimulator simulator, Clock clock) {
+                             EnergyTransferSimulator simulator, Clock clock, MarketAuditService audit) {
         this.offers = offers;
         this.transactions = transactions;
         this.simulator = simulator;
         this.clock = clock;
+        this.audit = audit;
     }
 
     @Transactional
@@ -71,6 +73,10 @@ public class EnergyTransactionService {
         EnergyTransaction transaction = transactions.save(EnergyTransaction.pending(offer.id(),
                 offer.sellerId(), buyerId, offer.energyAmountKwh(), offer.pricePerKwh(),
                 idempotencyKey, now));
+        audit.record(com.miapp.energy.domain.model.AuditEvent.Type.PURCHASE_STARTED,
+                com.miapp.energy.domain.model.AuditEvent.ActorType.USER, buyerId, buyerId,
+                com.miapp.energy.domain.model.AuditEvent.Resource.TRANSACTION, transaction.id(),
+                com.miapp.energy.domain.model.AuditEvent.Result.SUCCESS);
         EnergyTransferResult transfer = simulator.transfer(offer);
         transaction.complete(transfer.successful(), transfer.executedAt());
         transactions.saveVerification(transaction.id(),
@@ -80,7 +86,14 @@ public class EnergyTransactionService {
                 ? EnergyOfferStatus.SOLD
                 : (offer.expiresAt().isAfter(transfer.executedAt())
                 ? EnergyOfferStatus.ACTIVE : EnergyOfferStatus.EXPIRED));
-        return transactions.update(transaction);
+        EnergyTransaction completed = transactions.update(transaction);
+        audit.record(transfer.successful() ? com.miapp.energy.domain.model.AuditEvent.Type.PURCHASE_CONFIRMED
+                        : com.miapp.energy.domain.model.AuditEvent.Type.PURCHASE_REJECTED,
+                com.miapp.energy.domain.model.AuditEvent.ActorType.USER, buyerId, buyerId,
+                com.miapp.energy.domain.model.AuditEvent.Resource.TRANSACTION, transaction.id(),
+                transfer.successful() ? com.miapp.energy.domain.model.AuditEvent.Result.SUCCESS
+                        : com.miapp.energy.domain.model.AuditEvent.Result.REJECTED);
+        return completed;
     }
 
     @Transactional(readOnly = true)

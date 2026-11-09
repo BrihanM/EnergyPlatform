@@ -179,6 +179,13 @@ class MeterDeviceReadingIntegrationTest {
         changeStatus(url, "ACTIVE").andExpect(status().isConflict());
         mvc.perform(post(url + "/credential-rotation").header("X-Authenticated-User-Id", owner)
                 .header("X-Authenticated-Roles", "ADMIN")).andExpect(status().isConflict());
+        assertThat(jdbc.queryForList("""
+                SELECT event_type FROM energy_market.audit_events WHERE resource_id = ? ORDER BY occurred_at
+                """, String.class, device.id())).containsExactly("METER_PROVISIONED", "METER_CREDENTIAL_ROTATED",
+                "METER_SUSPENDED", "METER_ACTIVATED", "METER_REVOKED");
+        String events = jdbc.queryForList("SELECT * FROM energy_market.audit_events WHERE resource_id = ?",
+                device.id()).toString();
+        assertThat(events).doesNotContain(device.credential(), replacement);
     }
 
     ResultActions changeStatus(String url, String state) throws Exception {
