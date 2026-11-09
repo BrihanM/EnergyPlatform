@@ -25,7 +25,10 @@ present in the frontend; live end-to-end verification remains pending.
 | HU-16 | Gateway/Operations | Network configuration | internal network and perimeter checks | 6 | Docker topology | Partially present in Compose; acceptance evidence pending |
 | HU-17 | Frontend/auth | Auth session | Login/register/protected routes | 1-2 | Auth endpoints | Core Auth implementation present; broader route validation pending |
 | HU-18 | Auth/Infrastructure | User first/last name (pgcrypto `pgp_sym_encrypt`) | Encryption at rest of PII names, key from `AUTH_PII_ENCRYPTION_KEY` (see docs/AUTH_SERVICE.md, F18). Email and credentials not encrypted by design | 7 | Key rotation and email HMAC index in a later phase | Basic |
+<<<<<<< HEAD
 | F19 | Auth/Market/Infrastructure | Development demo data (`demo-seed` service, profile `seed`) | Demo ADMIN created in-process by `DevSeedAdminBootstrap` (gated by `DEV_SEED_ENABLED`); the rest is created through public HTTP APIs (see docs/DEV_SEED_DATA.md) | - | Rejected transactions and EXPIRED offers are not generated; re-runs skip existing devices and readings | Basic |
+=======
+>>>>>>> 806b02dafb137b0275756bc818ccdffed10b0bed
 | HU-19 | Auth/Market | AuditEvent | event persistence and emission | 7 | Audit ownership/schema | Persistent events and rollback tested; Compose separates SQL runtime and Flyway roles; complete event/field coverage and existing-environment rollout remain pending |
 | HU-20 | Market/transactions | Transaction | `GET /api/v1/transactions/me` | 7 | HU-12, authorization | Backend and paginated frontend history implemented; authenticated API and browser flow validated against an isolated Compose stack |
 | HU-21 | Audit | AuditEvent | auditor query/filter UI/API | 7 | HU-06, HU-19 | Separate auditor-only queries and PostgreSQL filter/pagination tests; complete edge-case coverage pending; UI not implemented |

@@ -251,10 +251,13 @@ Set-Location backend
 .\mvnw.cmd -pl services/auth-service -am test
 ```
 
+<<<<<<< HEAD
 ## Administrador demo para desarrollo (F19)
 
 `DevSeedAdminBootstrap` (`infrastructure/config`) solo existe en el contexto cuando `DEV_SEED_ENABLED=true`. Antes de la carga de datos, crea la cuenta `demo-admin` si no hay ningún administrador activo, y le asigna el rol ADMIN con registro de auditoría. Si ya existe un administrador activo, no hace nada. No debe habilitarse en producción. Detalles de uso en [DEV_SEED_DATA.md](./DEV_SEED_DATA.md).
 
+=======
+>>>>>>> 806b02dafb137b0275756bc818ccdffed10b0bed
 ## Sesiones y refresh tokens
 
 `Session` relaciona una cuenta con una sesión independiente; una cuenta puede
