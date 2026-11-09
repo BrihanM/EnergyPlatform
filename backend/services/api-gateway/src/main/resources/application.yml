@@ -51,6 +51,10 @@ management:
       show-details: never
 
 security:
+  introspection:
+    uri: ${AUTH_SERVICE_URI:http://localhost:8081}
+    secret: ${AUTH_INTROSPECTION_SECRET}
+    timeout: ${AUTH_INTROSPECTION_TIMEOUT:2s}
   jwt:
     issuer: ${JWT_ISSUER:mi-app-auth}
     secret: ${JWT_SECRET}

@@ -33,13 +33,14 @@ public class JwtAccessTokenGenerator implements AccessTokenGeneratorPort {
     }
 
     @Override
-    public AccessToken generate(UUID subject, String username, Set<Role> roles, Instant issuedAt) {
+    public AccessToken generate(UUID subject, UUID sessionId, String username, Set<Role> roles, Instant issuedAt) {
         Instant expiresAt = issuedAt.plus(expiration);
         String value = Jwts.builder()
                 .subject(subject.toString())
                 .issuer(properties.issuer())
                 .issuedAt(Date.from(issuedAt))
                 .expiration(Date.from(expiresAt))
+                .claim("sid", sessionId.toString())
                 .claim("username", username)
                 .claim("roles", roles.stream().map(Role::name).sorted().toList())
                 .signWith(key, Jwts.SIG.HS256)

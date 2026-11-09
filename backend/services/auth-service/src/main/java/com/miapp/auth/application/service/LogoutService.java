@@ -25,7 +25,7 @@ public class LogoutService implements LogoutUseCase {
         if (refreshToken == null || refreshToken.isBlank()) {
             return;
         }
-        sessions.findByRefreshTokenHash(sessionService.hash(refreshToken))
+        sessions.findByRefreshTokenHashForUpdate(sessionService.hash(refreshToken))
                 .filter(session -> sessionService.matches(refreshToken, session))
                 .ifPresent(sessionService::revoke);
     }

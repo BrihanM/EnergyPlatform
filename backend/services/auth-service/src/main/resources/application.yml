@@ -35,6 +35,8 @@ logging:
     com.miapp.auth: INFO
 
 security:
+  introspection:
+    secret: ${AUTH_INTROSPECTION_SECRET}
   jwt:
     issuer: ${JWT_ISSUER:mi-app-auth}
     secret: ${JWT_SECRET}

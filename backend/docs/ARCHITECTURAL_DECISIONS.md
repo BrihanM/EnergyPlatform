@@ -86,20 +86,22 @@ TLS, rate limiting, secure delivery and durable audit remain operational work.
 Auth persists the official roles and includes them in JWT claims. They are
 independent of `AccountStatus`; device credentials do not grant any user role.
 
-### F17 security design question, before implementation
+### F17.1: Online session and role validation
 
-The current Gateway validates JWT signature, issuer, expiration and embedded
-roles locally; it does not check the current account status or role assignments.
-Revoking refresh sessions alone therefore cannot immediately invalidate an
-already-issued access token. A suspended user or a user whose role was removed
-can continue using that token until its expiry, including against Market.
-One alternative is a fail-closed, authenticated Gateway-to-Auth validation on
-protected requests that checks current account and role state. It provides
-immediate enforcement but adds latency and makes Auth availability a dependency
-of protected traffic. The alternative is to retain the expiry-bound window and
-document that risk; this does not provide immediate account or role revocation.
-The deployment and availability trade-off requires a decision before changing
-the authentication boundary.
+Each protected Gateway request validates the signed JWT and then consults Auth
+without caching. The JWT's `sid` identifies an existing session; Auth verifies
+the JWT again, the active account and session, and returns current roles.
+Gateway fails closed when Auth is unavailable. This adds latency and makes Auth
+availability a dependency of protected traffic. Legacy JWTs without `sid` are
+rejected; existing valid refresh sessions can obtain a new token. Public offer
+reads and device-credential ingestion remain independent of this call.
+
+The internal endpoint requires a separate shared secret and is not routed by
+Gateway. Compose currently provides a private HTTP network, not transport
+encryption or process-level identity: production requires TLS or mTLS, isolated
+network access and managed secrets. A future suspension operation must revoke
+all sessions transactionally; changing account status alone and subsequently
+reactivating it does not permanently invalidate those sessions.
 
 ## Decisions requiring approval before implementation
 

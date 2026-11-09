@@ -103,6 +103,16 @@ class GatewayJwtValidatorTest {
                 .isInstanceOf(GatewayJwtValidator.JwtValidationException.class);
     }
 
+    @Test
+    void rejectsLegacyTokenWithoutSessionId() {
+        String token = Jwts.builder().subject(UUID.randomUUID().toString()).issuer(ISSUER)
+                .issuedAt(new Date()).expiration(Date.from(Instant.now().plusSeconds(60)))
+                .claim("username", "user").claim("roles", java.util.List.of("NORMAL_USER"))
+                .signWith(key, Jwts.SIG.HS256).compact();
+        assertThatThrownBy(() -> validator.validate(token))
+                .isInstanceOf(GatewayJwtValidator.JwtValidationException.class);
+    }
+
     private String token(UUID userId, String issuer, Instant expiration, String username,
                          SecretKey signingKey) {
         return Jwts.builder()
@@ -110,6 +120,7 @@ class GatewayJwtValidatorTest {
                 .issuer(issuer)
                 .issuedAt(new Date())
                 .expiration(Date.from(expiration))
+                .claim("sid", UUID.randomUUID().toString())
                 .claim("username", username)
                 .claim("roles", java.util.List.of("NORMAL_USER"))
                 .signWith(signingKey, Jwts.SIG.HS256)

@@ -10,6 +10,7 @@ import com.miapp.auth.application.result.AuthenticationResult;
 import com.miapp.auth.domain.model.Session;
 import com.miapp.auth.domain.model.User;
 import com.miapp.auth.domain.exception.InvalidSessionException;
+import com.miapp.auth.domain.model.AccountStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -50,18 +51,20 @@ public class RefreshService implements RefreshSessionUseCase {
             throw new InvalidSessionException();
         }
         String hash = sessionServiceHash(refreshToken);
-        Session session = sessions.findByRefreshTokenHash(hash)
+        Session session = sessions.findByRefreshTokenHashForUpdate(hash)
                 .filter(value -> value.isActiveAt(clock.instant()))
                 .orElseThrow(InvalidSessionException::new);
         if (!sessionService.matches(refreshToken, session)) {
             throw new InvalidSessionException();
         }
+        var account = accounts.findById(session.accountId())
+                .filter(value -> value.status() == AccountStatus.ACTIVE)
+                .orElseThrow(InvalidSessionException::new);
         String replacement = sessionService.generateReplacementToken(session);
-        var account = accounts.findById(session.accountId()).orElseThrow(InvalidSessionException::new);
         User user = users.findById(account.userId()).orElseThrow(InvalidSessionException::new);
         var currentRoles = roles.findRolesByUserId(user.id());
         AccessTokenGeneratorPort.AccessToken access = accessTokens.generate(
-                user.id(), account.username(), currentRoles, clock.instant());
+                user.id(), session.id(), account.username(), currentRoles, clock.instant());
         return new AuthenticationResult(access.value(), access.expiresInSeconds(), replacement,
                 new AuthenticationResult.UserSummary(user.id(), user.firstName(), user.lastName(),
                         account.username(), account.email(), user.createdAt()), currentRoles);

@@ -10,11 +10,7 @@ import com.miapp.auth.domain.model.Role;
  */
 public interface AccessTokenGeneratorPort {
 
-    AccessToken generate(UUID subject, String username, Set<Role> roles, Instant issuedAt);
-
-    default AccessToken generate(UUID subject, String username, Instant issuedAt) {
-        return generate(subject, username, Set.of(), issuedAt);
-    }
+    AccessToken generate(UUID subject, UUID sessionId, String username, Set<Role> roles, Instant issuedAt);
 
     record AccessToken(String value, long expiresInSeconds) {
     }

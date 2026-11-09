@@ -43,6 +43,10 @@ public class GatewayJwtValidator {
                     .parseSignedClaims(token);
             Claims claims = parsed.getPayload();
             UUID userId = UUID.fromString(claims.getSubject());
+            UUID.fromString(claims.get("sid", String.class));
+            if (claims.getExpiration() == null) {
+                throw new JwtValidationException();
+            }
             String username = claims.get("username", String.class);
             if (username == null || username.isBlank()) {
                 throw new JwtValidationException();
@@ -55,7 +59,8 @@ public class GatewayJwtValidator {
                     .filter(String.class::isInstance)
                     .map(String.class::cast)
                     .collect(java.util.stream.Collectors.toUnmodifiableSet());
-            if (roles.isEmpty() || roles.stream().anyMatch(value ->
+            if (roleValues.stream().anyMatch(value -> !(value instanceof String))
+                    || roles.stream().anyMatch(value ->
                     !Set.of("NORMAL_USER", "ADMIN", "SECURITY_AUDITOR").contains(value))) {
                 throw new JwtValidationException();
             }

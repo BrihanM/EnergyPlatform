@@ -17,8 +17,9 @@ Gateway-provided `ADMIN` identity. Role changes are logged with actor and target
 UUIDs without credentials or tokens. Revoking the last active administrator is
 rejected.
 
-The `roles` claim is included in access JWTs. Refresh loads assignments again,
-so a role change is reflected in the next access token. `RBAC_BOOTSTRAP_ADMIN_USERNAME`
+The `roles` claim is included in access JWTs, but authorization through Gateway
+uses the current assignments returned by Auth on every protected request.
+Refresh also loads assignments again. `RBAC_BOOTSTRAP_ADMIN_USERNAME`
 may name an existing active account for one-time initial ADMIN assignment; it
 does not create accounts or credentials and is ignored once an active admin
 exists.
@@ -116,11 +117,13 @@ El access token es un JWT firmado con HMAC-SHA256 y el refresh token se envía
 }
 ```
 
-El JWT contiene únicamente `sub` (UUID del usuario), `iss`, `iat`, `exp` y
-`username`. Su secreto, issuer y duración se leen desde `security.jwt`
+El JWT contiene `sub` (UUID del usuario), `sid` (UUID de la sesión persistida),
+`iss`, `iat`, `exp`, `username` y `roles`. Su secreto, issuer y duración se leen desde `security.jwt`
 (`JWT_SECRET`, `JWT_ISSUER` y `JWT_EXPIRATION`); `JWT_SECRET` es obligatorio,
 debe ser provisto por el entorno y tener al menos 32 bytes. El access token es
-stateless y no se persiste.
+no se persiste; su sesión sí se comprueba en línea. Los JWT anteriores sin
+`sid` se rechazan. Una sesión de refresh vigente puede emitir un JWT nuevo;
+de lo contrario el usuario debe iniciar sesión nuevamente.
 
 Las cuentas `LOCKED`, `DISABLED`, inexistentes y las contraseñas incorrectas
 producen la misma respuesta `401 Unauthorized` con el mensaje genérico
@@ -218,7 +221,8 @@ deberá enviar las solicitudes relevantes con `withCredentials: true`.
 ### `POST /api/v1/auth/refresh`
 
 Lee el refresh token desde la cookie HttpOnly, valida que la sesión exista,
-no esté revocada ni expirada y compara el hash. Una operación válida rota el
+no esté revocada ni expirada, compara el hash y comprueba que la cuenta esté
+activa. Una operación válida rota el
 token (el hash anterior deja de ser válido), extiende su expiración, genera un
 nuevo JWT y devuelve una nueva cookie. La operación se ejecuta dentro de una
 transacción. Las solicitudes inválidas responden con el mensaje genérico
@@ -229,8 +233,30 @@ transacción. Las solicitudes inválidas responden con el mensaje genérico
 Busca la sesión mediante el hash del refresh token, la revoca lógicamente si
 existe y siempre devuelve `204 No Content` junto con una cookie de eliminación
 con el mismo nombre, dominio y path. La operación es idempotente y no revela
-si la sesión existía.
+si la sesión existía. Refresh y logout bloquean la sesión durante la
+transacción para evitar que una rotación concurrente restaure una revocación.
+El logout identifica la sesión por el refresh token vigente: si otro cliente
+ya lo rotó, una cookie anterior no identifica la sesión y el logout idempotente
+puede responder 204 sin revocarla. El cierre coordinado entre pestañas durante
+una rotación concurrente requiere una solución de sesiones adicional.
 
-El gateway sólo enruta estos endpoints y mantiene CORS con orígenes explícitos
-(`allowCredentials=true`); todavía no valida JWT ni aplica autorización. El
-frontend debe enviar login, refresh y logout con `withCredentials: true`.
+El frontend debe enviar login, refresh y logout con `withCredentials: true`.
+
+### Internal online authorization
+
+Gateway sends the user JWT to Auth's `POST /internal/authorization/introspect`
+over the internal service connection, with `X-Internal-Auth-Secret`. The secret
+is a separate required `AUTH_INTROSPECTION_SECRET`, at least 32 characters,
+configured only in Gateway and Auth. The endpoint is not a public Gateway
+route. Auth validates the caller credential and the JWT signature, issuer,
+expiry, subject and session UUID, then checks that the session belongs to that
+user, is unexpired and unrevoked, and its account is active. It returns the
+current username and role assignments, not the JWT's role claims. Invalid
+sessions receive 401; an invalid caller credential receives 403. No JWT,
+refresh token or internal credential should be logged.
+
+The existing Compose network is private but uses HTTP; production must secure
+service-to-service traffic with TLS or mTLS and protect the shared credential
+with a secret manager. A shared secret authenticates its holder, not a specific
+process. Account states are currently `ACTIVE`, `LOCKED`, and `DISABLED`;
+the user-administration and suspension workflows are not implemented.

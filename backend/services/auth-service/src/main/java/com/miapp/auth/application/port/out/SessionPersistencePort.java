@@ -18,4 +18,6 @@ public interface SessionPersistencePort {
      * Busca una sesión por el hash persistido del token.
      */
     Optional<Session> findByRefreshTokenHash(String refreshTokenHash);
+
+    Optional<Session> findByRefreshTokenHashForUpdate(String refreshTokenHash);
 }

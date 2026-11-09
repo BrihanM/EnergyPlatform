@@ -20,6 +20,8 @@ import org.springframework.security.web.server.util.matcher.ServerWebExchangeMat
 import org.springframework.web.server.ServerWebExchange;
 import org.springframework.web.server.WebFilter;
 import reactor.core.publisher.Mono;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.nio.charset.StandardCharsets;
 import java.util.List;
@@ -33,6 +35,7 @@ import java.util.regex.Pattern;
 @EnableConfigurationProperties(GatewayJwtProperties.class)
 public class GatewaySecurityConfiguration {
 
+    private static final Logger LOG = LoggerFactory.getLogger(GatewaySecurityConfiguration.class);
     private static final String USER_ID = "X-Authenticated-User-Id";
     private static final String ACCOUNT_ID = "X-Authenticated-Account-Id";
     private static final String USERNAME = "X-Authenticated-Username";
@@ -79,7 +82,8 @@ public class GatewaySecurityConfiguration {
      */
     @Bean
     @Order(-200)
-    public WebFilter gatewayAuthenticationFilter(GatewayJwtValidator validator, ObjectMapper objectMapper) {
+    public WebFilter gatewayAuthenticationFilter(GatewayJwtValidator validator, ObjectMapper objectMapper,
+                                                 OnlineAuthorizationClient authorizationClient) {
         return (exchange, chain) -> {
             ServerWebExchange sanitized = exchange.mutate()
                     .request(request -> request.headers(headers -> {
@@ -87,9 +91,14 @@ public class GatewaySecurityConfiguration {
                         headers.remove(ACCOUNT_ID);
                         headers.remove(USERNAME);
                         headers.remove(ROLES);
+                        headers.remove("X-Internal-Auth-Secret");
                     }))
                     .build();
 
+            if (sanitized.getRequest().getPath().value().startsWith("/internal/authorization/")) {
+                sanitized.getResponse().setStatusCode(HttpStatus.NOT_FOUND);
+                return sanitized.getResponse().setComplete();
+            }
             if (isPublic(sanitized)) {
                 return chain.filter(sanitized);
             }
@@ -101,19 +110,28 @@ public class GatewaySecurityConfiguration {
             }
 
             try {
-                GatewayJwtValidator.GatewayIdentity identity =
-                        validator.validate(authorization.substring(7).trim());
-                ServerWebExchange trusted = sanitized.mutate()
-                        .request(request -> request.headers(headers -> {
-                            headers.set(USER_ID, identity.userId());
-                            headers.set(USERNAME, identity.username());
-                            headers.set(ROLES, String.join(",", identity.roles().stream().sorted().toList()));
-                        }))
-                        .build();
-                var authentication = new UsernamePasswordAuthenticationToken(
-                        identity.userId(), null, List.of());
-                return chain.filter(trusted)
-                        .contextWrite(ReactiveSecurityContextHolder.withAuthentication(authentication));
+                String token = authorization.substring(7).trim();
+                GatewayJwtValidator.GatewayIdentity jwtIdentity = validator.validate(token);
+                return authorizationClient.validate(token, jwtIdentity.userId())
+                        .flatMap(identity -> {
+                            ServerWebExchange trusted = sanitized.mutate()
+                                    .request(request -> request.headers(headers -> {
+                                        headers.set(USER_ID, identity.userId());
+                                        headers.set(USERNAME, identity.username());
+                                        headers.set(ROLES, String.join(",", identity.roles().stream().sorted().toList()));
+                                    })).build();
+                            var authentication = new UsernamePasswordAuthenticationToken(identity.userId(), null, List.of());
+                            return chain.filter(trusted)
+                                    .contextWrite(ReactiveSecurityContextHolder.withAuthentication(authentication));
+                        })
+                        .onErrorResume(OnlineAuthorizationClient.InvalidAuthorizationException.class,
+                                exception -> unauthorized(sanitized, objectMapper))
+                        .onErrorResume(OnlineAuthorizationClient.AuthorizationUnavailableException.class, exception -> {
+                            Throwable cause = exception.getCause();
+                            LOG.warn("Online authorization unavailable: {}",
+                                    cause == null ? "invalid response or service error" : cause.getClass().getSimpleName());
+                            return error(sanitized, objectMapper, HttpStatus.SERVICE_UNAVAILABLE);
+                        });
             } catch (GatewayJwtValidator.JwtValidationException exception) {
                 return unauthorized(sanitized, objectMapper);
             }
@@ -147,18 +165,22 @@ public class GatewaySecurityConfiguration {
     }
 
     private Mono<Void> unauthorized(ServerWebExchange exchange, ObjectMapper objectMapper) {
-        exchange.getResponse().setStatusCode(HttpStatus.UNAUTHORIZED);
-        exchange.getResponse().getHeaders().setContentType(MediaType.APPLICATION_JSON);
         exchange.getResponse().getHeaders().set("WWW-Authenticate", "Bearer");
+        return error(exchange, objectMapper, HttpStatus.UNAUTHORIZED);
+    }
+
+    private Mono<Void> error(ServerWebExchange exchange, ObjectMapper objectMapper, HttpStatus status) {
+        exchange.getResponse().setStatusCode(status);
+        exchange.getResponse().getHeaders().setContentType(MediaType.APPLICATION_JSON);
         String correlationId = exchange.getRequest().getHeaders().getFirst(CorrelationId.HEADER_NAME);
         try {
             String body = objectMapper.writeValueAsString(new GatewayErrorResponse(
-                    java.time.Instant.now(), 401, "Unauthorized", "Unauthorized",
+                    java.time.Instant.now(), status.value(), status.getReasonPhrase(), status.getReasonPhrase(),
                     exchange.getRequest().getURI().getPath(), correlationId));
             DataBuffer buffer = exchange.getResponse().bufferFactory()
                     .wrap(body.getBytes(StandardCharsets.UTF_8));
             return exchange.getResponse().writeWith(Mono.just(buffer));
-        } catch (Exception exception) {
+        } catch (com.fasterxml.jackson.core.JsonProcessingException exception) {
             return Mono.error(exception);
         }
     }

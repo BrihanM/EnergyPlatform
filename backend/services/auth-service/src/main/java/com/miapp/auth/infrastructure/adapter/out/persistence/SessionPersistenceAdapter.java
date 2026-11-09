@@ -34,4 +34,10 @@ public class SessionPersistenceAdapter implements SessionPersistencePort {
         return repository.findByRefreshTokenHash(refreshTokenHash)
                 .map(SessionPersistenceMapper::toDomain);
     }
+
+    @Override
+    public Optional<Session> findByRefreshTokenHashForUpdate(String refreshTokenHash) {
+        return repository.findByRefreshTokenHashForUpdate(refreshTokenHash)
+                .map(SessionPersistenceMapper::toDomain);
+    }
 }

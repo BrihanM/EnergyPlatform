@@ -35,6 +35,17 @@ class PublicOffersGatewayIntegrationTest {
     @DynamicPropertySource
     static void routes(DynamicPropertyRegistry registry) throws IOException {
         upstream = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        upstream.createContext("/internal/authorization/introspect", exchange -> {
+            String bearer = exchange.getRequestHeaders().getFirst("Authorization");
+            String userId = Jwts.parser()
+                    .verifyWith(Keys.hmacShaKeyFor(SECRET.getBytes(StandardCharsets.UTF_8))).build()
+                    .parseSignedClaims(bearer.substring(7)).getPayload().getSubject();
+            byte[] body = ("{\"userId\":\"" + userId
+                    + "\",\"username\":\"test-user\",\"roles\":[\"NORMAL_USER\"]}").getBytes(StandardCharsets.UTF_8);
+            exchange.getResponseHeaders().set("Content-Type", "application/json");
+            exchange.sendResponseHeaders(200, body.length);
+            try (var output = exchange.getResponseBody()) { output.write(body); }
+        });
         upstream.createContext("/", exchange -> {
             String user = exchange.getRequestHeaders().getFirst("X-Authenticated-User-Id");
             String roles = exchange.getRequestHeaders().getFirst("X-Authenticated-Roles");
@@ -46,6 +57,7 @@ class PublicOffersGatewayIntegrationTest {
         });
         upstream.start();
         String uri = "http://127.0.0.1:" + upstream.getAddress().getPort();
+        registry.add("security.introspection.uri", () -> uri);
         String[] paths = { "/api/v1/auth/**", "/api/v1/market/**",
                 "/api/v1/offers/**", "/api/v1/transactions/**" };
         for (int i = 0; i < paths.length; i++) {
@@ -129,6 +141,7 @@ class PublicOffersGatewayIntegrationTest {
         UUID userId = UUID.randomUUID();
         String token = Jwts.builder().subject(userId.toString()).issuer("test-issuer")
                 .issuedAt(new Date()).expiration(Date.from(Instant.now().plusSeconds(300)))
+                .claim("sid", UUID.randomUUID().toString())
                 .claim("username", "test-user").claim("roles", java.util.List.of("NORMAL_USER"))
                 .signWith(Keys.hmacShaKeyFor(SECRET.getBytes(StandardCharsets.UTF_8)), Jwts.SIG.HS256)
                 .compact();

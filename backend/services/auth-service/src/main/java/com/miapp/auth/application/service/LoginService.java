@@ -92,7 +92,7 @@ public class LoginService implements LoginUseCase {
                 ? Set.of(Role.NORMAL_USER)
                 : rolePersistencePort.findRolesByUserId(user.id());
         AccessTokenGeneratorPort.AccessToken accessToken =
-                accessTokenGenerator.generate(user.id(), account.username(), roles, clock.instant());
+                accessTokenGenerator.generate(user.id(), session.session().id(), account.username(), roles, clock.instant());
         return new LoginResult(true, summary, accessToken.value(),
                 accessToken.expiresInSeconds(), session.refreshToken(), roles);
     }

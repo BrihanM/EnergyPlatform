@@ -18,6 +18,10 @@ spring:
                 - Path=/api/v1/offers/**
 
 security:
+  introspection:
+    uri: http://localhost:8081
+    secret: test-introspection-secret-at-least-32-characters
+    timeout: 2s
   jwt:
     issuer: test-issuer
     secret: test-gateway-secret-that-is-at-least-32-bytes

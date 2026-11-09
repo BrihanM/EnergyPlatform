@@ -13,6 +13,8 @@ spring:
     locations: classpath:db/migration
 
 security:
+  introspection:
+    secret: test-introspection-secret-at-least-32-characters
   jwt:
     issuer: test-issuer
     secret: test-jwt-secret-that-is-at-least-32-bytes-long
