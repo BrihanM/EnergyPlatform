@@ -189,9 +189,57 @@ El formato contiene `timestamp`, `status`, `error`, `message`, `path` y el
 `X-Correlation-ID` recibido, cuando existe. No se incluyen SQL, stack traces,
 hashes ni credenciales.
 
-## Configuración y pruebas
+## Protección de datos y validación de entradas (F18: HU-07 y HU-18)
 
-La conexión se configura con `AUTH_DB_URL`, `AUTH_DB_USERNAME`,
+**Campos cifrados.** `users.first_name` y `users.last_name` se almacenan cifrados
+en `first_name_enc` y `last_name_enc` (`BYTEA`) con `pgp_sym_encrypt` de la
+extensión `pgcrypto` (migración `V8__encrypt_user_names_with_pgcrypto.sql`).
+Son datos personales que no participan en login, unicidad ni búsqueda. Se
+descifran sólo en `UserPersistenceAdapter.findById` y en el listado
+administrativo `JdbcUserAdministrationAdapter`.
+
+**No cifrados, por diseño.** `email` y `username` se mantienen en claro porque
+el login, las restricciones únicas y las búsquedas dependen de ellos. Cifrarlos
+exigiría un índice HMAC de búsqueda, previsto para una fase posterior. Las
+contraseñas no se cifran: siguen con hash seguro. Los hashes de credenciales de
+medidores ya están en `BYTEA` y no se modifican.
+
+**Gestión de la clave.** `AUTH_PII_ENCRYPTION_KEY` es obligatoria y no tiene
+valor por defecto.
+- Compose falla al arrancar si no está definida (`docker-compose.yml`).
+- La migración V8 la recibe como placeholder de Flyway. La clave nunca se guarda
+  en la base de datos ni en el código.
+- `PiiEncryptionKeyProvider` falla al iniciar si la clave está vacía.
+- Generación recomendada: `openssl rand -base64 48`. No debe contener comillas
+  simples, porque se inserta como literal SQL en la migración.
+
+**Despliegue de migraciones.** V8 habilita `pgcrypto` con `CREATE EXTENSION IF
+NOT EXISTS`. El rol `AUTH_FLYWAY_USERNAME` necesita privilegio `CREATE` sobre la
+base de datos, o un administrador debe instalar `pgcrypto` antes. El backfill se
+ejecuta una sola vez: cambiar la clave después no re-cifra los datos existentes.
+
+**Validación de entradas.** `LoginRequest` limita `identifier` a 320 caracteres y
+`password` a 128. Un valor fuera de rango responde `400` con el mensaje genérico
+`Request data is invalid`. El SQL usa parámetros enlazados (JPA/JDBC), sin
+concatenación. Un payload de inyección en el identificador recibe el mismo `401`
+genérico que un usuario inexistente. `RegisterUserCommand.toString()` oculta los
+datos personales para evitar que aparezcan en logs.
+
+**Pruebas.** `UserNameEncryptionIntegrationTest` comprueba que el valor queda
+cifrado en la columna, que se recupera con la clave correcta y que la
+actualización funciona. `AuthLoginControllerTest` cubre entradas excesivas y el
+payload de inyección. Las pruebas de integración usan PostgreSQL mediante
+Testcontainers.
+
+**Limitaciones conocidas.**
+- Sin rotación de claves. Cambiar la clave exige re-cifrado manual fuera de Flyway.
+- Flyway no tiene rollback: la migración V8 es irreversible sin copia de seguridad.
+- Durante la migración, la clave puede aparecer en los logs de sentencias de
+  PostgreSQL si están activados.
+- No hay prueba de inyección a nivel de repositorio. La prueba se hace en el
+  controlador con el caso de uso simulado.
+- Email sin cifrar hasta implementar el índice HMAC.
+- La validación de Energy Market (ofertas, paginación, identificadores) no se modificó. `AUTH_DB_URL`, `AUTH_DB_USERNAME`,
 `AUTH_DB_PASSWORD`, `POSTGRES_DB` y `POSTGRES_PORT`. Las pruebas unitarias
 validan normalización, política de contraseña, duplicados y ausencia de
 secretos. Las pruebas de persistencia usan PostgreSQL 18 mediante Testcontainers
@@ -202,6 +250,10 @@ cuando Docker está disponible y comprueban Flyway, relación y restricciones
 Set-Location backend
 .\mvnw.cmd -pl services/auth-service -am test
 ```
+
+## Administrador demo para desarrollo (F19)
+
+`DevSeedAdminBootstrap` (`infrastructure/config`) solo existe en el contexto cuando `DEV_SEED_ENABLED=true`. Antes de la carga de datos, crea la cuenta `demo-admin` si no hay ningún administrador activo, y le asigna el rol ADMIN con registro de auditoría. Si ya existe un administrador activo, no hace nada. No debe habilitarse en producción. Detalles de uso en [DEV_SEED_DATA.md](./DEV_SEED_DATA.md).
 
 ## Sesiones y refresh tokens
 

@@ -1,7 +1,6 @@
 package com.miapp.auth;
 
 import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 
@@ -10,9 +9,13 @@ import org.springframework.test.context.DynamicPropertySource;
  */
 abstract class PostgresIntegrationTest {
 
-    @Container
     private static final PostgreSQLContainer<?> POSTGRES =
             new PostgreSQLContainer<>("postgres:18.6-alpine3.24");
+
+    // Singleton container: Spring caches contexts across test classes, so the database must outlive each class.
+    static {
+        POSTGRES.start();
+    }
 
     /**
      * Sustituye la configuración local por las credenciales efímeras del contenedor.

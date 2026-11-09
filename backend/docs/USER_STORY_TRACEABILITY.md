@@ -13,7 +13,7 @@ present in the frontend; live end-to-end verification remains pending.
 | HU-04 | Auth/Gateway | Error responses | Generic safe error envelope | 1 | Correlation ID | Implemented in current handlers |
 | HU-05 | Auth | Session | refresh/logout endpoints | 2 | HttpOnly cookie, rotation | Implemented/validated in current Auth |
 | HU-06 | Auth/Gateway | Account, future Role | Role claims and route authorization | 2 | Approved RBAC model | Pending; no role model currently present |
-| HU-07 | Auth/Market | Request DTOs, domain entities | Boundary and domain validation | 3 | HU-06, market service | Pending |
+| HU-07 | Auth/Market | Request DTOs, domain entities | Boundary validation (size/type/range), generic 400, parameterized SQL, SQL-injection tests | 3 | HU-06, market service | Basic (see docs/AUTH_SERVICE.md, F18) |
 | HU-08 | Gateway/Infrastructure | Rate-limit keys | Gateway/API rate limiting | 3 | Redis, policy | Pending |
 | HU-09 | Market/offers | EnergyOffer | `POST /api/v1/offers` | 4 | HU-06, DB design | Implemented/validated in F12 backend |
 | HU-10 | Market/offers | EnergyOffer | `GET /api/v1/offers`, `GET /api/v1/offers/{id}`, `/me` | 4 | HU-09 | Implemented/validated in F12 backend |
@@ -24,7 +24,8 @@ present in the frontend; live end-to-end verification remains pending.
 | HU-15 | Market/readings | MeterDevice, EnergyReading | authenticated device reading ingestion | 6 | Device credential policy | Backend ingestion and administrator-managed credentials implemented and validated with PostgreSQL and Gateway; production TLS, secure delivery, rate limits and durable audit remain pending |
 | HU-16 | Gateway/Operations | Network configuration | internal network and perimeter checks | 6 | Docker topology | Partially present in Compose; acceptance evidence pending |
 | HU-17 | Frontend/auth | Auth session | Login/register/protected routes | 1-2 | Auth endpoints | Core Auth implementation present; broader route validation pending |
-| HU-18 | Market/Infrastructure | Device credential, audit metadata | encryption at rest/in transit design | 7 | Key-management decision | Pending |
+| HU-18 | Auth/Infrastructure | User first/last name (pgcrypto `pgp_sym_encrypt`) | Encryption at rest of PII names, key from `AUTH_PII_ENCRYPTION_KEY` (see docs/AUTH_SERVICE.md, F18). Email and credentials not encrypted by design | 7 | Key rotation and email HMAC index in a later phase | Basic |
+| F19 | Auth/Market/Infrastructure | Development demo data (`demo-seed` service, profile `seed`) | Demo ADMIN created in-process by `DevSeedAdminBootstrap` (gated by `DEV_SEED_ENABLED`); the rest is created through public HTTP APIs (see docs/DEV_SEED_DATA.md) | - | Rejected transactions and EXPIRED offers are not generated; re-runs skip existing devices and readings | Basic |
 | HU-19 | Auth/Market | AuditEvent | event persistence and emission | 7 | Audit ownership/schema | Persistent events and rollback tested; Compose separates SQL runtime and Flyway roles; complete event/field coverage and existing-environment rollout remain pending |
 | HU-20 | Market/transactions | Transaction | `GET /api/v1/transactions/me` | 7 | HU-12, authorization | Backend and paginated frontend history implemented; authenticated API and browser flow validated against an isolated Compose stack |
 | HU-21 | Audit | AuditEvent | auditor query/filter UI/API | 7 | HU-06, HU-19 | Separate auditor-only queries and PostgreSQL filter/pagination tests; complete edge-case coverage pending; UI not implemented |

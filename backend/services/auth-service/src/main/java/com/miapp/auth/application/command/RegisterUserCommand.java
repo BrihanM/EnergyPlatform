@@ -2,7 +2,8 @@ package com.miapp.auth.application.command;
 
 /**
  * Entrada del caso de uso de registro. La contraseña sólo vive durante la
- * ejecución y su representación textual está deliberadamente redactada.
+ * ejecución y su representación textual está deliberadamente redactada,
+ * igual que los datos personales, para que no aparezcan en logs.
  */
 public record RegisterUserCommand(
         String firstName,
@@ -13,7 +14,6 @@ public record RegisterUserCommand(
 
     @Override
     public String toString() {
-        return "RegisterUserCommand[firstName=%s, lastName=%s, username=%s, email=%s, password=[REDACTED]]"
-                .formatted(firstName, lastName, username, email);
+        return "RegisterUserCommand[redacted]";
     }
 }

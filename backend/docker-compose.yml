@@ -80,6 +80,7 @@ services:
       AUTH_FLYWAY_USERNAME: ${AUTH_FLYWAY_USERNAME:?AUTH_FLYWAY_USERNAME is required}
       AUTH_FLYWAY_PASSWORD: ${AUTH_FLYWAY_PASSWORD:?AUTH_FLYWAY_PASSWORD is required}
       AUTH_FLYWAY_LOCATIONS: classpath:db/migration,classpath:db/pg-grants
+      AUTH_PII_ENCRYPTION_KEY: ${AUTH_PII_ENCRYPTION_KEY:?AUTH_PII_ENCRYPTION_KEY is required}
       ENERGY_MARKET_FLYWAY_USERNAME: ${ENERGY_MARKET_FLYWAY_USERNAME:?ENERGY_MARKET_FLYWAY_USERNAME is required}
       ENERGY_MARKET_DB_USERNAME: ${ENERGY_MARKET_DB_USERNAME:?ENERGY_MARKET_DB_USERNAME is required}
       JWT_ISSUER: ${JWT_ISSUER}
@@ -94,6 +95,10 @@ services:
       REFRESH_TOKEN_COOKIE_DOMAIN: ${REFRESH_TOKEN_COOKIE_DOMAIN}
       REFRESH_TOKEN_COOKIE_MAX_AGE: ${REFRESH_TOKEN_COOKIE_MAX_AGE}
       RBAC_BOOTSTRAP_ADMIN_USERNAME: ${RBAC_BOOTSTRAP_ADMIN_USERNAME:-}
+      DEV_SEED_ENABLED: ${DEV_SEED_ENABLED:-true}
+      SEED_DEMO_ADMIN_USERNAME: ${SEED_DEMO_ADMIN_USERNAME:-demo-admin}
+      SEED_DEMO_ADMIN_EMAIL: ${SEED_DEMO_ADMIN_EMAIL:-demo-admin@example.test}
+      SEED_DEMO_PASSWORD: ${SEED_DEMO_PASSWORD:-}
     depends_on:
       postgres:
         condition: service_healthy
@@ -172,6 +177,37 @@ services:
       timeout: 5s
       retries: 12
       start_period: 30s
+
+  # Development-only seed. Runs only with `--profile seed`, after the gateway is healthy.
+  demo-seed:
+    image: python:3.12-slim
+    profiles: ["seed"]
+    restart: "no"
+    working_dir: /seed
+    command: ["python", "/seed/seed_demo_data.py"]
+    environment:
+      SEED_BASE_URL: http://api-gateway:8080
+      SEED_DEMO_PASSWORD: ${SEED_DEMO_PASSWORD:?SEED_DEMO_PASSWORD is required for the seed profile}
+      SEED_DEMO_ADMIN_USERNAME: ${SEED_DEMO_ADMIN_USERNAME:-demo-admin}
+      SEED_AUDITOR_USERNAME: ${SEED_AUDITOR_USERNAME:-demo-auditor}
+      SEED_NORMAL_USERS: ${SEED_NORMAL_USERS:-8}
+      SEED_DEVICES: ${SEED_DEVICES:-4}
+      SEED_READINGS_PER_DEVICE: ${SEED_READINGS_PER_DEVICE:-10}
+      SEED_OFFERS_TOTAL: ${SEED_OFFERS_TOTAL:-20}
+      SEED_CANCELLED_OFFERS: ${SEED_CANCELLED_OFFERS:-2}
+      SEED_TRANSACTIONS: ${SEED_TRANSACTIONS:-10}
+      PYTHONDONTWRITEBYTECODE: "1"
+    volumes:
+      - ./infrastructure/seed/seed_demo_data.py:/seed/seed_demo_data.py:ro
+    depends_on:
+      api-gateway:
+        condition: service_healthy
+      auth-service:
+        condition: service_healthy
+      energy-market-service:
+        condition: service_healthy
+    networks:
+      - backend-internal
 
 networks:
   backend-internal:
