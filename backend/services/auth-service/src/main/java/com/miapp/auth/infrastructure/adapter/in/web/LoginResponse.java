@@ -4,6 +4,8 @@ import com.miapp.auth.application.result.LoginResult;
 
 import java.time.Instant;
 import java.util.UUID;
+import java.util.Set;
+import com.miapp.auth.domain.model.Role;
 
 /**
  * DTO HTTP del login; no contiene credenciales ni tokens.
@@ -13,14 +15,15 @@ public record LoginResponse(
         String accessToken,
         String tokenType,
         long expiresIn,
-        UserResponse user) {
+        UserResponse user,
+        Set<Role> roles) {
 
     static LoginResponse from(LoginResult result) {
         LoginResult.UserSummary user = result.user();
         return new LoginResponse(result.authenticated(), result.accessToken(), "Bearer",
                 result.expiresIn(), new UserResponse(
                 user.id(), user.firstName(), user.lastName(), user.username(),
-                user.email(), user.createdAt()));
+                user.email(), user.createdAt()), result.roles());
     }
 
     /**

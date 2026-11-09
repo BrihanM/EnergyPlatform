@@ -6,6 +6,7 @@ import com.miapp.auth.application.port.out.AccountPersistencePort;
 import com.miapp.auth.application.port.out.PasswordHashingPort;
 import com.miapp.auth.application.port.out.UserPersistencePort;
 import com.miapp.auth.application.port.out.AccessTokenGeneratorPort;
+import com.miapp.auth.application.port.out.RolePersistencePort;
 import com.miapp.auth.application.result.CreateSessionResult;
 import com.miapp.auth.application.result.LoginResult;
 import com.miapp.auth.domain.exception.InvalidCredentialsException;
@@ -15,6 +16,8 @@ import com.miapp.auth.domain.model.User;
 import org.springframework.stereotype.Service;
 import org.springframework.beans.factory.annotation.Autowired;
 import java.time.Clock;
+import java.util.Set;
+import com.miapp.auth.domain.model.Role;
 
 /**
  * Servicio de aplicación para autenticar cuentas mediante username o email.
@@ -34,12 +37,13 @@ public class LoginService implements LoginUseCase {
     private final SessionService sessionService;
     private final AccessTokenGeneratorPort accessTokenGenerator;
     private final Clock clock;
+    private final RolePersistencePort rolePersistencePort;
 
     public LoginService(AccountPersistencePort accountPersistencePort,
                         UserPersistencePort userPersistencePort,
                         PasswordHashingPort passwordHashingPort) {
         this(accountPersistencePort, userPersistencePort, passwordHashingPort,
-                null, null, null);
+                null, null, null, null);
     }
 
     @Autowired
@@ -48,13 +52,15 @@ public class LoginService implements LoginUseCase {
                         PasswordHashingPort passwordHashingPort,
                         SessionService sessionService,
                         AccessTokenGeneratorPort accessTokenGenerator,
-                        Clock clock) {
+                        Clock clock,
+                        RolePersistencePort rolePersistencePort) {
         this.accountPersistencePort = accountPersistencePort;
         this.userPersistencePort = userPersistencePort;
         this.passwordHashingPort = passwordHashingPort;
         this.sessionService = sessionService;
         this.accessTokenGenerator = accessTokenGenerator;
         this.clock = clock;
+        this.rolePersistencePort = rolePersistencePort;
     }
 
     @Override
@@ -82,10 +88,13 @@ public class LoginService implements LoginUseCase {
             return new LoginResult(true, summary);
         }
         CreateSessionResult session = sessionService.create(account.id());
+        Set<Role> roles = rolePersistencePort == null
+                ? Set.of(Role.NORMAL_USER)
+                : rolePersistencePort.findRolesByUserId(user.id());
         AccessTokenGeneratorPort.AccessToken accessToken =
-                accessTokenGenerator.generate(user.id(), account.username(), clock.instant());
+                accessTokenGenerator.generate(user.id(), account.username(), roles, clock.instant());
         return new LoginResult(true, summary, accessToken.value(),
-                accessToken.expiresInSeconds(), session.refreshToken());
+                accessToken.expiresInSeconds(), session.refreshToken(), roles);
     }
 
     /**

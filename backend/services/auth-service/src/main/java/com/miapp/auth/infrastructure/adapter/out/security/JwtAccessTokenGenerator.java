@@ -12,6 +12,8 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.Date;
 import java.util.UUID;
+import java.util.Set;
+import com.miapp.auth.domain.model.Role;
 
 /**
  * Generador JWT HMAC-SHA256. El secreto se obtiene exclusivamente de
@@ -31,7 +33,7 @@ public class JwtAccessTokenGenerator implements AccessTokenGeneratorPort {
     }
 
     @Override
-    public AccessToken generate(UUID subject, String username, Instant issuedAt) {
+    public AccessToken generate(UUID subject, String username, Set<Role> roles, Instant issuedAt) {
         Instant expiresAt = issuedAt.plus(expiration);
         String value = Jwts.builder()
                 .subject(subject.toString())
@@ -39,6 +41,7 @@ public class JwtAccessTokenGenerator implements AccessTokenGeneratorPort {
                 .issuedAt(Date.from(issuedAt))
                 .expiration(Date.from(expiresAt))
                 .claim("username", username)
+                .claim("roles", roles.stream().map(Role::name).sorted().toList())
                 .signWith(key, Jwts.SIG.HS256)
                 .compact();
         return new AccessToken(value, expiration.toSeconds());

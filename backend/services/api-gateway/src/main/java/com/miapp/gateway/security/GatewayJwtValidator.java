@@ -9,6 +9,9 @@ import org.springframework.stereotype.Component;
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
 import java.util.UUID;
+import java.util.List;
+import java.util.Set;
+import com.miapp.gateway.security.GatewayJwtValidator.GatewayIdentity;
 
 /**
  * Valida firma, issuer, expiración y claims mínimos del JWT emitido por auth-service.
@@ -44,13 +47,25 @@ public class GatewayJwtValidator {
             if (username == null || username.isBlank()) {
                 throw new JwtValidationException();
             }
-            return new GatewayIdentity(userId.toString(), username);
+            Object rawRoles = claims.get("roles");
+            if (!(rawRoles instanceof List<?> roleValues)) {
+                throw new JwtValidationException();
+            }
+            Set<String> roles = roleValues.stream()
+                    .filter(String.class::isInstance)
+                    .map(String.class::cast)
+                    .collect(java.util.stream.Collectors.toUnmodifiableSet());
+            if (roles.isEmpty() || roles.stream().anyMatch(value ->
+                    !Set.of("NORMAL_USER", "ADMIN", "SECURITY_AUDITOR").contains(value))) {
+                throw new JwtValidationException();
+            }
+            return new GatewayIdentity(userId.toString(), username, roles);
         } catch (Exception exception) {
             throw new JwtValidationException();
         }
     }
 
-    public record GatewayIdentity(String userId, String username) {
+    public record GatewayIdentity(String userId, String username, Set<String> roles) {
     }
 
     public static final class JwtValidationException extends RuntimeException {

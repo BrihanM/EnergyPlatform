@@ -37,16 +37,19 @@ class GatewayAuthenticationFilterTest {
                 .issuedAt(new Date())
                 .expiration(Date.from(Instant.now().plusSeconds(900)))
                 .claim("username", "trusted-user")
+                .claim("roles", java.util.List.of("NORMAL_USER"))
                 .signWith(key(), Jwts.SIG.HS256)
                 .compact();
         var request = MockServerHttpRequest.get("/api/v1/protected")
                 .header("Authorization", "Bearer " + token)
                 .header("X-Authenticated-User-Id", "malicious-value")
                 .header("X-Authenticated-Username", "malicious-user")
+                .header("X-Authenticated-Roles", "ADMIN")
                 .build();
         var exchange = MockServerWebExchange.from(request);
         AtomicReference<String> propagatedUser = new AtomicReference<>();
         AtomicReference<String> propagatedUsername = new AtomicReference<>();
+        AtomicReference<String> propagatedRoles = new AtomicReference<>();
         WebFilter filter = new GatewaySecurityConfiguration().gatewayAuthenticationFilter(
                 new GatewayJwtValidator(new GatewayJwtProperties("mi-app-auth", SECRET)),
                 JsonMapper.builder().build());
@@ -55,11 +58,14 @@ class GatewayAuthenticationFilterTest {
             propagatedUser.set(nextRequestUser(next));
             propagatedUsername.set(next.getRequest().getHeaders()
                     .getFirst("X-Authenticated-Username"));
+            propagatedRoles.set(next.getRequest().getHeaders()
+                    .getFirst("X-Authenticated-Roles"));
             return reactor.core.publisher.Mono.empty();
         }).block();
 
         assertThat(propagatedUser).hasValue(userId.toString());
         assertThat(propagatedUsername).hasValue("trusted-user");
+        assertThat(propagatedRoles).hasValue("NORMAL_USER");
     }
 
     private String nextRequestUser(ServerWebExchange exchange) {

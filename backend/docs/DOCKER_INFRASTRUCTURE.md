@@ -2,17 +2,17 @@
 
 ## Arquitectura
 
-`docker-compose.yml` ejecuta PostgreSQL y Redis, sin contenerizar todavía
-`api-gateway` ni `auth-service`.
+`docker-compose.yml` ejecuta PostgreSQL, Redis, Auth, Gateway y el esqueleto
+interno de Energy Market.
 
 | Servicio | Imagen fijada | Puerto local | Uso |
 |---|---|---:|---|
 | PostgreSQL | `postgres:18.6-alpine3.24` | `${POSTGRES_PORT}` -> 5432 | Base relacional compartida |
 | Redis | `redis:8.2.1-alpine3.22` | `${REDIS_PORT}` -> 6379 | Caché y almacenamiento temporal |
+| Energy Market | Java 21 container | sin puerto host | Esquema y APIs futuras del mercado |
 
 Ambos servicios están en la red interna `mi-app-backend-internal`. Los puertos
-se enlazan sólo a `127.0.0.1`. Cuando los microservicios se incorporen al
-Compose, deberán conectarse usando `postgres` y `redis`, no `localhost`.
+se enlazan sólo a `127.0.0.1`. Los microservicios se conectan usando `postgres` y `redis`, no `localhost`.
 
 ## Variables de entorno
 
@@ -35,9 +35,10 @@ credenciales reutilizadas en entornos compartidos o productivos.
 - Los health checks usan `pg_isready` y `redis-cli` autenticado.
 - Ambos servicios usan `restart: unless-stopped`.
 
-PostgreSQL es una instancia única en esta fase, pero cada microservicio debe
-mantener propiedad lógica de sus datos. Las migraciones Flyway se añadirán
-posteriormente. Redis es opcional para la lógica fundamental del dominio.
+PostgreSQL es una instancia única en esta fase, pero cada microservicio mantiene
+propiedad lógica de sus datos. Auth usa el esquema público; Energy Market usa
+`energy_market` y su propio historial Flyway. Redis es opcional para la lógica
+fundamental del dominio.
 
 ## Operación
 

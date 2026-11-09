@@ -5,6 +5,7 @@ import com.miapp.auth.application.port.out.AccessTokenGeneratorPort;
 import com.miapp.auth.application.port.out.SessionPersistencePort;
 import com.miapp.auth.application.port.out.UserPersistencePort;
 import com.miapp.auth.application.port.out.AccountPersistencePort;
+import com.miapp.auth.application.port.out.RolePersistencePort;
 import com.miapp.auth.application.result.AuthenticationResult;
 import com.miapp.auth.domain.model.Session;
 import com.miapp.auth.domain.model.User;
@@ -26,17 +27,20 @@ public class RefreshService implements RefreshSessionUseCase {
     private final AccountPersistencePort accounts;
     private final AccessTokenGeneratorPort accessTokens;
     private final Clock clock;
+    private final RolePersistencePort roles;
 
     public RefreshService(SessionPersistencePort sessions, SessionService sessionService,
                           UserPersistencePort users, AccountPersistencePort accounts,
                           AccessTokenGeneratorPort accessTokens,
-                          Clock clock) {
+                          Clock clock,
+                          RolePersistencePort roles) {
         this.sessions = sessions;
         this.sessionService = sessionService;
         this.users = users;
         this.accounts = accounts;
         this.accessTokens = accessTokens;
         this.clock = clock;
+        this.roles = roles;
     }
 
     @Override
@@ -55,11 +59,12 @@ public class RefreshService implements RefreshSessionUseCase {
         String replacement = sessionService.generateReplacementToken(session);
         var account = accounts.findById(session.accountId()).orElseThrow(InvalidSessionException::new);
         User user = users.findById(account.userId()).orElseThrow(InvalidSessionException::new);
+        var currentRoles = roles.findRolesByUserId(user.id());
         AccessTokenGeneratorPort.AccessToken access = accessTokens.generate(
-                user.id(), account.username(), clock.instant());
+                user.id(), account.username(), currentRoles, clock.instant());
         return new AuthenticationResult(access.value(), access.expiresInSeconds(), replacement,
                 new AuthenticationResult.UserSummary(user.id(), user.firstName(), user.lastName(),
-                        account.username(), account.email(), user.createdAt()));
+                        account.username(), account.email(), user.createdAt()), currentRoles);
     }
 
     private String sessionServiceHash(String refreshToken) {

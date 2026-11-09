@@ -190,12 +190,14 @@ const request = async <TResponse>(
   const requestHeaders = new Headers(headers ?? {});
   const requestUrl = buildUrl(path, params);
   const hasBody = body !== undefined && body !== null && !['GET', 'HEAD'].includes(method);
+  const isBinaryLikeBody =
+    body instanceof FormData ||
+    body instanceof URLSearchParams ||
+    body instanceof Blob ||
+    body instanceof ArrayBuffer;
   const requestBody =
     hasBody && typeof body !== 'string'
-      ? body instanceof FormData ||
-          body instanceof URLSearchParams ||
-          body instanceof Blob ||
-          body instanceof ArrayBuffer
+      ? isBinaryLikeBody
         ? body
         : JSON.stringify(body)
       : body;
@@ -203,11 +205,8 @@ const request = async <TResponse>(
   if (
     requestBody !== undefined &&
     requestBody !== null &&
-    typeof requestBody !== 'string' &&
-    !(requestBody instanceof FormData) &&
-    !(requestBody instanceof URLSearchParams) &&
-    !(requestBody instanceof Blob) &&
-    !(requestBody instanceof ArrayBuffer) &&
+    !isBinaryLikeBody &&
+    typeof body !== 'string' &&
     !requestHeaders.has('Content-Type')
   ) {
     requestHeaders.set('Content-Type', 'application/json');

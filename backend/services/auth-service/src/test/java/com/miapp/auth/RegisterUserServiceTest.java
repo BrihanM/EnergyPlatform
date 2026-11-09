@@ -4,6 +4,7 @@ import com.miapp.auth.application.command.RegisterUserCommand;
 import com.miapp.auth.application.port.out.AccountPersistencePort;
 import com.miapp.auth.application.port.out.PasswordHashingPort;
 import com.miapp.auth.application.port.out.UserPersistencePort;
+import com.miapp.auth.application.port.out.RolePersistencePort;
 import com.miapp.auth.application.result.RegisterUserResult;
 import com.miapp.auth.application.service.RegisterUserService;
 import com.miapp.auth.domain.exception.DuplicateEmailException;
@@ -11,6 +12,7 @@ import com.miapp.auth.domain.exception.DuplicateUsernameException;
 import com.miapp.auth.domain.exception.InvalidRegistrationException;
 import com.miapp.auth.domain.model.Account;
 import com.miapp.auth.domain.model.User;
+import com.miapp.auth.domain.model.Role;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -27,6 +29,7 @@ class RegisterUserServiceTest {
     private UserPersistencePort userPersistencePort;
     private AccountPersistencePort accountPersistencePort;
     private PasswordHashingPort passwordHashingPort;
+    private RolePersistencePort rolePersistencePort;
     private RegisterUserService service;
 
     @BeforeEach
@@ -34,7 +37,9 @@ class RegisterUserServiceTest {
         userPersistencePort = mock(UserPersistencePort.class);
         accountPersistencePort = mock(AccountPersistencePort.class);
         passwordHashingPort = mock(PasswordHashingPort.class);
-        service = new RegisterUserService(userPersistencePort, accountPersistencePort, passwordHashingPort);
+        rolePersistencePort = mock(RolePersistencePort.class);
+        service = new RegisterUserService(userPersistencePort, accountPersistencePort,
+                passwordHashingPort, rolePersistencePort);
         when(passwordHashingPort.hash("ContraseñaSegura1")).thenReturn("$2a$hash");
         when(userPersistencePort.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(accountPersistencePort.save(any(Account.class))).thenAnswer(invocation -> invocation.getArgument(0));
@@ -56,6 +61,7 @@ class RegisterUserServiceTest {
                 account.username().equals("brayan.marin")
                         && account.email().equals("brayan@example.com")
                         && account.passwordHash().equals("$2a$hash")));
+        verify(rolePersistencePort).assignRole(any(), any(), eq(Role.NORMAL_USER));
     }
 
     @Test
