@@ -46,6 +46,9 @@ public class EnergyTransactionService {
             if (!existing.offerId().equals(offerId)) {
                 throw new EnergyTransactionDomainException("Idempotency key was used for another offer");
             }
+            if (existing.status() == EnergyTransactionStatus.PENDING_VERIFICATION) {
+                return settlePending(buyerId, existing);
+            }
             return existing;
         }
         EnergyOffer offer = offers.findForPurchase(offerId);
@@ -67,6 +70,9 @@ public class EnergyTransactionService {
             if (!retry.offerId().equals(offerId)) {
                 throw new EnergyTransactionDomainException("Idempotency key was used for another offer");
             }
+            if (retry.status() == EnergyTransactionStatus.PENDING_VERIFICATION) {
+                return settlePending(buyerId, retry);
+            }
             return retry;
         }
         offers.setPurchaseStatus(offer.id(), EnergyOfferStatus.RESERVED);
@@ -77,6 +83,39 @@ public class EnergyTransactionService {
                 com.miapp.energy.domain.model.AuditEvent.ActorType.USER, buyerId, buyerId,
                 com.miapp.energy.domain.model.AuditEvent.Resource.TRANSACTION, transaction.id(),
                 com.miapp.energy.domain.model.AuditEvent.Result.SUCCESS);
+        return settle(transaction, offer, buyerId);
+    }
+
+    /**
+     * Closes a transaction left in {@code PENDING_VERIFICATION} by the buyer. Idempotent: an already
+     * finalized transaction is returned unchanged.
+     *
+     * @throws EnergyTransactionDomainException when the transaction does not exist or belongs to another buyer
+     */
+    @Transactional
+    public EnergyTransaction complete(UUID buyerId, UUID transactionId) {
+        EnergyTransaction transaction = transactions.findById(transactionId)
+                .filter(found -> found.buyerId().equals(buyerId))
+                .orElseThrow(() -> new EnergyTransactionDomainException("Transaction was not found"));
+        if (transaction.status() != EnergyTransactionStatus.PENDING_VERIFICATION) {
+            return transaction;
+        }
+        return settlePending(buyerId, transaction);
+    }
+
+    /**
+     * Locks the offer before re-reading the transaction so two concurrent completions cannot both settle it.
+     */
+    private EnergyTransaction settlePending(UUID buyerId, EnergyTransaction pending) {
+        EnergyOffer offer = offers.findForPurchase(pending.offerId());
+        EnergyTransaction current = transactions.findById(pending.id()).orElse(pending);
+        if (current.status() != EnergyTransactionStatus.PENDING_VERIFICATION) {
+            return current;
+        }
+        return settle(current, offer, buyerId);
+    }
+
+    private EnergyTransaction settle(EnergyTransaction transaction, EnergyOffer offer, UUID buyerId) {
         EnergyTransferResult transfer = simulator.transfer(offer);
         transaction.complete(transfer.successful(), transfer.executedAt());
         transactions.saveVerification(transaction.id(),

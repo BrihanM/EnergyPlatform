@@ -104,13 +104,51 @@ describe('purchase', () => {
     expect(result.current.message).toMatch(/cannot safely coordinate/i)
   })
 
-  it('does not start a different intention while the previous outcome is unknown', async () => {
-    const request = vi.spyOn(transactionsService, 'purchase').mockRejectedValue(new Error('offline'))
+  it('buys a different offer while the previous outcome is unknown, with its own key', async () => {
+    const request = vi.spyOn(transactionsService, 'purchase').mockRejectedValueOnce(new Error('offline')).mockResolvedValueOnce({ ...transaction, offerId: 'offer-2' })
     const { result } = renderHook(() => usePurchase('buyer'))
     await act(async () => { await result.current.purchase('offer-1') })
     await act(async () => { await result.current.purchase('offer-2') })
+    expect(request).toHaveBeenCalledTimes(2)
+    expect(request.mock.calls[1][0]).toBe('offer-2')
+    expect(request.mock.calls[1][1]).not.toBe(request.mock.calls[0][1])
+    expect(result.current.message).toBeNull()
+  })
+
+  it('discards the pending purchase when its offer is no longer available', async () => {
+    const request = vi.spyOn(transactionsService, 'purchase')
+      .mockRejectedValueOnce(new HttpError({ status: 409, message: 'Offer is no longer available' }))
+      .mockResolvedValueOnce({ ...transaction, id: 'transaction-2', offerId: 'offer-2' })
+    const { result } = renderHook(() => usePurchase('buyer'))
+    await act(async () => { await result.current.purchase('offer-1') })
+    expect(getPendingPurchase('buyer')).toBeNull()
+    expect(result.current.discarded).toBe(true)
+    expect(result.current.message).toMatch(/no purchase was made/i)
+    await act(async () => { await result.current.purchase('offer-2') })
+    expect(request).toHaveBeenCalledTimes(2)
+    expect(result.current.message).toBeNull()
+  })
+
+  it('buys another offer while a pending purchase for a different offer exists', async () => {
+    savePendingPurchase('buyer', { offerId: 'offer-old', key: 'key-old' })
+    const request = vi.spyOn(transactionsService, 'purchase').mockResolvedValue({ ...transaction, offerId: 'offer-1' })
+    render(<PurchasePanel offer={offer} userId="buyer" />)
+    expect(screen.queryByRole('button', { name: 'Discard pending purchase' })).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Buy offer' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm purchase' }))
+    expect(await screen.findByText('Purchase confirmed')).toBeTruthy()
     expect(request).toHaveBeenCalledTimes(1)
-    expect(result.current.message).toMatch(/resolve your pending purchase/i)
+    expect(request.mock.calls[0][0]).toBe('offer-1')
+    expect(request.mock.calls[0][1]).not.toBe('key-old')
+  })
+
+  it('retries a pending purchase for the same offer with its original key', async () => {
+    savePendingPurchase('buyer', { offerId: 'offer-1', key: 'key-1' })
+    const request = vi.spyOn(transactionsService, 'purchase').mockResolvedValue(transaction)
+    const { result } = renderHook(() => usePurchase('buyer'))
+    await act(async () => { await result.current.purchase('offer-1') })
+    expect(request).toHaveBeenCalledWith('offer-1', 'key-1')
+    expect(getPendingPurchase('buyer')).toBeNull()
   })
 
   it('recovers the same key after the purchase component is remounted', async () => {
@@ -124,6 +162,18 @@ describe('purchase', () => {
     expect(request.mock.calls[1][1]).toBe(key)
   })
 
+  it('shows an in-progress transaction in history and completes it', async () => {
+    const pendingItem: Transaction = { ...transaction, status: 'PENDING_VERIFICATION' }
+    vi.spyOn(transactionsService, 'history').mockResolvedValue([pendingItem])
+    const complete = vi.spyOn(transactionsService, 'complete').mockResolvedValue(transaction)
+    savePendingPurchase('buyer', { offerId: 'offer-1', key: 'key-1', transactionId: pendingItem.id })
+    render(<HistoryPage userId="buyer" navigate={vi.fn()} />)
+    expect(await screen.findByText('In progress')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Complete transaction' }))
+    await waitFor(() => expect(complete).toHaveBeenCalledWith(pendingItem.id))
+    await waitFor(() => expect(getPendingPurchase('buyer')).toBeNull())
+  })
+
   it('does not retry a resolved or replaced intention from a stale tab', async () => {
     const request = vi.spyOn(transactionsService, 'purchase')
     savePendingPurchase('buyer', { offerId: 'offer-1', key: 'original-key' })
@@ -134,12 +184,8 @@ describe('purchase', () => {
     clearPendingPurchase('buyer')
     fireEvent.click(screen.getByRole('button', { name: 'Retry same operation' }))
     expect(await screen.findByText(/no longer pending or has changed/i)).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Retry same operation' })).toBeNull()
     expect(request).not.toHaveBeenCalled()
-
-    savePendingPurchase('buyer', { offerId: 'offer-1', key: 'replacement-key' })
-    fireEvent.click(screen.getByRole('button', { name: 'Retry same operation' }))
-    await waitFor(() => expect(request).not.toHaveBeenCalled())
-    expect(getPendingPurchase('buyer')?.key).toBe('replacement-key')
   })
 
   it('does not retry from a stale purchase panel after another tab resolves it', async () => {

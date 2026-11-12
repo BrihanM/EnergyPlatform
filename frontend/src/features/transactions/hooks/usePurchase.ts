@@ -6,10 +6,21 @@ import type { Transaction } from '../types'
 
 const activeUsers = new Set<string>()
 
+// The backend rejects these before claiming the idempotency key, so no transaction exists for the key.
+const OFFER_UNAVAILABLE_MESSAGES = new Set(['Offer is no longer available', 'Offer is expired'])
+const OFFER_UNAVAILABLE_NOTICE = 'The offer is no longer available, so no purchase was made. The pending purchase has been discarded.'
+// Rejected before any transaction is created for the new key, so the local record can be cleared safely.
+const definitiveRejectionNotice = (error: unknown): string | null => {
+  if (!(error instanceof HttpError) || error.status !== 409) return null
+  return OFFER_UNAVAILABLE_MESSAGES.has(error.message) ? OFFER_UNAVAILABLE_NOTICE : null
+}
+
 export function usePurchase(userId: string) {
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
   const [result, setResult] = useState<Transaction | null>(null)
+  const [discarded, setDiscarded] = useState(false)
+  const [outcomeUnknown, setOutcomeUnknown] = useState(false)
   const inFlight = useRef(false)
   const attemptedKey = useRef<string | null>(null)
 
@@ -23,6 +34,8 @@ export function usePurchase(userId: string) {
     activeUsers.add(userId)
     setBusy(true)
     setMessage(null)
+    setDiscarded(false)
+    setOutcomeUnknown(false)
     try {
       if (!navigator.locks) {
         setMessage('This browser cannot safely coordinate purchases across tabs. No request was sent.')
@@ -39,14 +52,19 @@ export function usePurchase(userId: string) {
           setMessage('This purchase is no longer pending or has changed. Refresh your transaction history before taking further action.')
           return
         }
-        if (previous && previous.offerId !== offerId) {
-          setMessage('Resolve your pending purchase before starting another one. Go to transaction history to retry it.')
-          return
-        }
-        const pending = previous ?? { offerId, key: crypto.randomUUID() }
+        // Retrying the same offer reuses its idempotency key; a different offer gets a fresh key and never blocks.
+        const pending = previous?.offerId === offerId ? previous : { offerId, key: crypto.randomUUID() }
         savePendingPurchase(userId, pending)
         attemptedKey.current = pending.key
-        const transaction = await transactionsService.purchase(offerId, pending.key)
+        const transaction = await transactionsService.purchase(offerId, pending.key).catch((error: unknown) => {
+          const notice = definitiveRejectionNotice(error)
+          if (!notice) throw error
+          clearPendingPurchase(userId)
+          setDiscarded(true)
+          setMessage(notice)
+          return null
+        })
+        if (!transaction) return
         if (transaction.offerId !== offerId || transaction.buyerId !== userId) {
           throw new Error('Unexpected transaction response')
         }
@@ -64,6 +82,7 @@ export function usePurchase(userId: string) {
         : error instanceof HttpError && error.status === 400
           ? 'The request could not be validated. '
           : ''
+      setOutcomeUnknown(true)
       setMessage(`${prefix}The purchase result is unknown. Check your history or retry this same operation; do not start a new purchase.`)
     } finally {
       inFlight.current = false
@@ -71,5 +90,13 @@ export function usePurchase(userId: string) {
       setBusy(false)
     }
   }
-  return { purchase, busy, message, result }
+
+  const reset = () => {
+    attemptedKey.current = null
+    setMessage(null)
+    setDiscarded(false)
+    setOutcomeUnknown(false)
+  }
+
+  return { purchase, reset, busy, message, result, discarded, outcomeUnknown }
 }

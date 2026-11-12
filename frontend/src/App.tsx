@@ -19,7 +19,8 @@ function App() {
     setPath(nextPath)
   }
   const canManage = isAuthenticated && user?.roles?.includes('NORMAL_USER')
-  const detailMatch = path.match(/^\/offers\/([^/]+)$/)
+  // Reserved offer sub-routes must not be captured as offer IDs.
+  const detailMatch = path.match(/^\/offers\/(?!mine$|new$)([^/]+)$/)
   const transactionMatch = path.match(/^\/transactions\/([^/]+)$/)
   const canTransact = canManage && user?.id && !user.roles?.some((role) => role === 'ADMIN' || role === 'SECURITY_AUDITOR')
   const page = path === '/login' ? <LoginPage /> : detailMatch

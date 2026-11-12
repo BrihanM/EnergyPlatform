@@ -50,6 +50,12 @@ public class EnergyTransactionController {
         return EnergyTransactionResponse.from(transaction, service.verification(transaction.id()).orElse(null));
     }
 
+    @PostMapping("/{id}/complete")
+    public EnergyTransactionResponse complete(@PathVariable UUID id, HttpServletRequest request) {
+        EnergyTransaction transaction = service.complete(OfferIdentity.requireNormalUser(request), id);
+        return EnergyTransactionResponse.from(transaction, service.verification(transaction.id()).orElse(null));
+    }
+
     public record PurchaseRequest(@NotNull UUID offerId) {}
 
     public record EnergyTransactionResponse(UUID id, UUID offerId, UUID sellerId, UUID buyerId,

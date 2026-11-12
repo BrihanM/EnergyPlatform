@@ -58,3 +58,25 @@ describe('transaction routes', () => {
     expect(screen.queryByRole('button', { name: 'Buy offer' })).toBeNull()
   })
 })
+
+describe('offer sub-routes', () => {
+  it('opens My offers instead of treating "mine" as an offer id', async () => {
+    vi.mocked(useAuth).mockReturnValue(session(['NORMAL_USER']))
+    const mine = vi.spyOn(offersService, 'mine').mockResolvedValue({ content: [], totalElements: 0, totalPages: 0, number: 0, size: 100 } as never)
+    const detail = vi.spyOn(offersService, 'get')
+    window.history.replaceState({}, '', '/offers/mine')
+    render(<App />)
+    expect(await screen.findByRole('heading', { name: 'My offers' })).toBeTruthy()
+    expect(mine).toHaveBeenCalled()
+    expect(detail).not.toHaveBeenCalled()
+  })
+
+  it('opens Publish offer instead of treating "new" as an offer id', () => {
+    vi.mocked(useAuth).mockReturnValue(session(['NORMAL_USER']))
+    const detail = vi.spyOn(offersService, 'get')
+    window.history.replaceState({}, '', '/offers/new')
+    render(<App />)
+    expect(screen.getByRole('heading', { name: 'Publish an offer' })).toBeTruthy()
+    expect(detail).not.toHaveBeenCalled()
+  })
+})

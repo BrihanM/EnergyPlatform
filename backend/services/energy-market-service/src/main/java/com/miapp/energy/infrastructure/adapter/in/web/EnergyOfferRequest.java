@@ -1,6 +1,5 @@
 package com.miapp.energy.infrastructure.adapter.in.web;
 
-import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.Future;

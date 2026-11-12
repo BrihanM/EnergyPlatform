@@ -41,6 +41,8 @@ export const transactionsService = {
     if (!Array.isArray(response)) throw new Error('Invalid transaction list')
     return response.map(parseTransaction)
   },
+  complete: async (id: string): Promise<Transaction> =>
+    parseTransaction(await httpClient.post<unknown>(`/api/v1/transactions/${encodeURIComponent(id)}/complete`, { requiresAuth: true })),
   detail: async (id: string): Promise<Transaction> =>
     parseTransaction(await httpClient.get<unknown>(`/api/v1/transactions/${encodeURIComponent(id)}`, { requiresAuth: true })),
 }

@@ -11,8 +11,6 @@ import java.nio.charset.StandardCharsets;
 import java.util.UUID;
 import java.util.List;
 import java.util.Set;
-import com.miapp.gateway.security.GatewayJwtValidator.GatewayIdentity;
-
 /**
  * Valida firma, issuer, expiración y claims mínimos del JWT emitido por auth-service.
  */

@@ -3,7 +3,6 @@ package com.miapp.auth.application.service;
 import com.miapp.auth.application.port.out.RolePersistencePort;
 import com.miapp.auth.application.port.out.UserPersistencePort;
 import com.miapp.auth.domain.exception.InvalidRoleOperationException;
-import com.miapp.auth.domain.model.AccountStatus;
 import com.miapp.auth.domain.model.Role;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

@@ -7,7 +7,7 @@ import { TransactionDetails } from './TransactionDetails'
 export function PurchasePanel({ offer, userId, onComplete }: { offer: EnergyOffer; userId: string; onComplete?: () => void }): ReactElement {
   const [confirming, setConfirming] = useState(false)
   const [expired, setExpired] = useState(false)
-  const { purchase, busy, message, result } = usePurchase(userId)
+  const { purchase, busy, message, result, discarded, outcomeUnknown } = usePurchase(userId)
   if (result) return <TransactionDetails transaction={result} userId={userId} />
   if (offer.sellerId === userId || offer.status !== 'ACTIVE') return <></>
   return <div>
@@ -21,11 +21,14 @@ export function PurchasePanel({ offer, userId, onComplete }: { offer: EnergyOffe
       <p>{offer.energyAmountKwh} kWh at {offer.pricePerKwh} COP per kWh. Indicative total: {multiply(offer.energyAmountKwh, offer.pricePerKwh)} COP.</p>
       <p>This is an academic simulation. No payment or real energy transfer occurs.</p>
       {message && <p className="error-message" role="alert">{message}</p>}
-      <button className="primary-button" disabled={busy} onClick={() => {
-        if (!message && new Date(offer.expiresAt).getTime() <= Date.now()) { setExpired(true); setConfirming(false); return }
-        void purchase(offer.id, { retryOnly: Boolean(message) }).then((value) => { if (value) onComplete?.() })
-      }}>{busy ? 'Processing...' : message ? 'Retry same operation' : 'Confirm purchase'}</button>
-      {!message && <button disabled={busy} onClick={() => setConfirming(false)}>Cancel</button>}
+      {discarded ? <button onClick={() => setConfirming(false)}>Close</button> : <>
+        <button className="primary-button" disabled={busy} onClick={() => {
+          if (!message && new Date(offer.expiresAt).getTime() <= Date.now()) { setExpired(true); setConfirming(false); return }
+          void purchase(offer.id, { retryOnly: outcomeUnknown }).then((value) => { if (value) onComplete?.() })
+        }}>{busy ? 'Processing...' : outcomeUnknown ? 'Retry same operation' : 'Confirm purchase'}</button>
+        {!outcomeUnknown && <button disabled={busy} onClick={() => setConfirming(false)}>Cancel</button>}
+      </>}
     </div>}
   </div>
 }
+

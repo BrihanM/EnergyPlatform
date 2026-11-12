@@ -354,6 +354,62 @@ class EnergyTransactionIntegrationTest {
                 """, String.class, buyer)).isEqualTo("REJECTED");
     }
 
+    @Test
+    void replayOfPendingPurchaseSettlesItInsteadOfReturningItOpen() {
+        UUID seller = user("Seller");
+        UUID buyer = user("Buyer");
+        UUID offerId = offer(seller, Instant.now().plusSeconds(3600));
+        openPendingTransaction(seller, buyer, offerId, "stuck-replay");
+
+        var completed = service.purchase(buyer, offerId, "stuck-replay");
+
+        assertThat(completed.status()).isEqualTo(com.miapp.energy.domain.model.EnergyTransactionStatus.CONFIRMED);
+        assertThat(offerStatus(offerId)).isEqualTo("SOLD");
+        assertThat(count("energy_market.operator_verifications")).isEqualTo(1);
+    }
+
+    @Test
+    void newPurchaseSucceedsWhileAnotherTransactionIsInProgress() {
+        UUID seller = user("Seller");
+        UUID buyer = user("Buyer");
+        UUID openOffer = offer(seller, Instant.now().plusSeconds(3600));
+        UUID nextOffer = offer(user("OtherSeller"), Instant.now().plusSeconds(3600));
+        openPendingTransaction(seller, buyer, openOffer, "open-one");
+
+        var next = service.purchase(buyer, nextOffer, "next-one");
+
+        assertThat(next.status()).isEqualTo(com.miapp.energy.domain.model.EnergyTransactionStatus.CONFIRMED);
+        assertThat(offerStatus(nextOffer)).isEqualTo("SOLD");
+        assertThat(countWhere("energy_market.energy_transactions", "buyer_id = '" + buyer + "'")).isEqualTo(2);
+    }
+
+    @Test
+    void completeSettlesOwnPendingTransactionAndRejectsOtherUsers() {
+        UUID seller = user("Seller");
+        UUID buyer = user("Buyer");
+        UUID offerId = offer(seller, Instant.now().plusSeconds(3600));
+        UUID transactionId = openPendingTransaction(seller, buyer, offerId, "stuck-complete");
+
+        assertThatThrownBy(() -> service.complete(seller, transactionId))
+                .hasMessage("Transaction was not found");
+
+        var completed = service.complete(buyer, transactionId);
+        assertThat(completed.status()).isEqualTo(com.miapp.energy.domain.model.EnergyTransactionStatus.CONFIRMED);
+        assertThat(offerStatus(offerId)).isEqualTo("SOLD");
+        assertThat(service.complete(buyer, transactionId).status())
+                .isEqualTo(com.miapp.energy.domain.model.EnergyTransactionStatus.CONFIRMED);
+        assertThat(count("energy_market.operator_verifications")).isEqualTo(1);
+    }
+
+    private UUID openPendingTransaction(UUID seller, UUID buyer, UUID offerId, String key) {
+        offers.setPurchaseStatus(offerId, com.miapp.energy.domain.model.EnergyOfferStatus.RESERVED);
+        transactions.claimIdempotency(buyer, key, offerId);
+        var pending = com.miapp.energy.domain.model.EnergyTransaction.pending(offerId, seller, buyer,
+                new BigDecimal("15.000"), new BigDecimal("500.00"), key, Instant.now());
+        transactions.save(pending);
+        return pending.id();
+    }
+
     private Object concurrentPurchase(UUID buyer, UUID offerId, String key,
                                       CountDownLatch ready, CountDownLatch start) {
         ready.countDown();
