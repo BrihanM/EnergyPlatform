@@ -110,55 +110,22 @@ export function LoginPage(): ReactElement {
   };
 
   return (
-    <main
-      style={{
-        minHeight: '100vh',
-        display: 'grid',
-        placeItems: 'center',
-        background: 'linear-gradient(135deg, #eff6ff 0%, #f8fafc 100%)',
-        padding: '2rem 1rem',
-      }}
-    >
-      <section
-        style={{
-          width: 'min(480px, 100%)',
-          background: '#ffffff',
-          borderRadius: '20px',
-          boxShadow: '0 24px 60px rgba(15, 23, 42, 0.08)',
-          border: '1px solid #e2e8f0',
-          overflow: 'hidden',
-        }}
-      >
-        <div
-          style={{
-            padding: '1.5rem 1.5rem 0.75rem',
-            borderBottom: '1px solid #e2e8f0',
-            background: '#f8fafc',
-          }}
-        >
-          <p style={{ margin: 0, color: '#475569', letterSpacing: '0.08em', textTransform: 'uppercase', fontSize: '0.72rem' }}>
+    <main className="auth-page">
+      <section className="auth-card">
+        <div className="auth-card-heading">
+          <p className="auth-kicker">
             Authentication
           </p>
-          <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
+          <div className="auth-mode-switch">
             {(['login', 'register'] as AuthMode[]).map((authMode) => (
               <button
                 key={authMode}
+                className={mode === authMode ? 'is-active' : undefined}
                 type="button"
                 onClick={() => {
                   setMode(authMode);
                   setErrorMessage(null);
                   setStatusMessage(null);
-                }}
-                style={{
-                  flex: 1,
-                  border: 'none',
-                  borderRadius: '999px',
-                  padding: '0.7rem 1rem',
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                  background: mode === authMode ? '#2563eb' : '#e2e8f0',
-                  color: mode === authMode ? '#ffffff' : '#1e293b',
-                  transition: 'all 0.2s ease',
                 }}
               >
                 {authMode === 'login' ? 'Login' : 'Register'}
@@ -167,34 +134,25 @@ export function LoginPage(): ReactElement {
           </div>
         </div>
 
-        <div style={{ padding: '1.5rem' }}>
+        <div className="auth-card-body">
           {isAuthenticated ? (
             <div>
-              <h2 style={{ margin: '0 0 0.5rem', fontSize: '1.5rem' }}>Signed in</h2>
-              <p style={{ margin: '0 0 1.25rem', color: '#475569' }}>
+              <h2>Signed in</h2>
+              <p className="muted">
                 Welcome back, {user?.username ?? user?.email ?? 'member'}.
               </p>
               <button
                 type="button"
                 onClick={handleLogout}
-                style={{
-                  width: '100%',
-                  border: 'none',
-                  borderRadius: '10px',
-                  padding: '0.8rem 1rem',
-                  background: '#dc2626',
-                  color: '#ffffff',
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                }}
+                className="danger-button"
               >
                 Sign out
               </button>
             </div>
           ) : mode === 'login' ? (
-            <form onSubmit={handleLoginSubmit} style={{ display: 'grid', gap: '1rem' }}>
+            <form className="auth-form" onSubmit={handleLoginSubmit}>
               <div>
-                <label htmlFor="identifier" style={{ display: 'block', marginBottom: '0.35rem', fontWeight: 600 }}>
+                <label htmlFor="identifier">
                   Username or email
                 </label>
                 <input
@@ -205,12 +163,11 @@ export function LoginPage(): ReactElement {
                   onChange={handleLoginChange}
                   required
                   placeholder="jdoe or john@example.com"
-                  style={inputStyles}
                 />
               </div>
 
               <div>
-                <label htmlFor="password" style={{ display: 'block', marginBottom: '0.35rem', fontWeight: 600 }}>
+                <label htmlFor="password">
                   Password
                 </label>
                 <input
@@ -221,19 +178,18 @@ export function LoginPage(): ReactElement {
                   onChange={handleLoginChange}
                   required
                   placeholder="Enter your password"
-                  style={inputStyles}
                 />
               </div>
 
-              <button type="submit" disabled={isSubmitting} style={{ ...primaryButtonStyle, opacity: isSubmitting ? 0.7 : 1 }}>
+              <button className="primary-button" type="submit" disabled={isSubmitting}>
                 {isSubmitting ? 'Signing in...' : 'Sign in'}
               </button>
             </form>
           ) : (
-            <form onSubmit={handleRegisterSubmit} style={{ display: 'grid', gap: '1rem' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+            <form className="auth-form" onSubmit={handleRegisterSubmit}>
+              <div className="auth-name-fields">
                 <div>
-                  <label htmlFor="firstName" style={{ display: 'block', marginBottom: '0.35rem', fontWeight: 600 }}>
+                  <label htmlFor="firstName">
                     First name
                   </label>
                   <input
@@ -243,11 +199,10 @@ export function LoginPage(): ReactElement {
                     value={registerForm.firstName}
                     onChange={handleRegisterChange}
                     required
-                    style={inputStyles}
                   />
                 </div>
                 <div>
-                  <label htmlFor="lastName" style={{ display: 'block', marginBottom: '0.35rem', fontWeight: 600 }}>
+                  <label htmlFor="lastName">
                     Last name
                   </label>
                   <input
@@ -257,13 +212,12 @@ export function LoginPage(): ReactElement {
                     value={registerForm.lastName}
                     onChange={handleRegisterChange}
                     required
-                    style={inputStyles}
                   />
                 </div>
               </div>
 
               <div>
-                <label htmlFor="username" style={{ display: 'block', marginBottom: '0.35rem', fontWeight: 600 }}>
+                <label htmlFor="username">
                   Username
                 </label>
                 <input
@@ -273,12 +227,11 @@ export function LoginPage(): ReactElement {
                   value={registerForm.username}
                   onChange={handleRegisterChange}
                   required
-                  style={inputStyles}
                 />
               </div>
 
               <div>
-                <label htmlFor="email" style={{ display: 'block', marginBottom: '0.35rem', fontWeight: 600 }}>
+                <label htmlFor="email">
                   Email
                 </label>
                 <input
@@ -288,12 +241,11 @@ export function LoginPage(): ReactElement {
                   value={registerForm.email}
                   onChange={handleRegisterChange}
                   required
-                  style={inputStyles}
                 />
               </div>
 
               <div>
-                <label htmlFor="register-password" style={{ display: 'block', marginBottom: '0.35rem', fontWeight: 600 }}>
+                <label htmlFor="register-password">
                   Password
                 </label>
                 <input
@@ -304,11 +256,10 @@ export function LoginPage(): ReactElement {
                   onChange={handleRegisterChange}
                   required
                   minLength={12}
-                  style={inputStyles}
                 />
               </div>
 
-              <button type="submit" disabled={isSubmitting} style={{ ...primaryButtonStyle, opacity: isSubmitting ? 0.7 : 1 }}>
+              <button className="primary-button" type="submit" disabled={isSubmitting}>
                 {isSubmitting ? 'Creating account...' : 'Create account'}
               </button>
             </form>
@@ -316,14 +267,7 @@ export function LoginPage(): ReactElement {
 
           {(statusMessage || errorMessage) && (
             <div
-              style={{
-                marginTop: '1rem',
-                padding: '0.85rem 1rem',
-                borderRadius: '10px',
-                background: errorMessage ? '#fef2f2' : '#eff6ff',
-                color: errorMessage ? '#b91c1c' : '#1d4ed8',
-                border: '1px solid ' + (errorMessage ? '#fecaca' : '#bfdbfe'),
-              }}
+              className={`auth-feedback${errorMessage ? ' auth-feedback-error' : ''}`}
             >
               {errorMessage ?? statusMessage}
             </div>
@@ -333,25 +277,5 @@ export function LoginPage(): ReactElement {
     </main>
   );
 }
-
-const inputStyles: React.CSSProperties = {
-  width: '100%',
-  border: '1px solid #cbd5e1',
-  borderRadius: '10px',
-  padding: '0.8rem 0.9rem',
-  fontSize: '1rem',
-  outline: 'none',
-  transition: 'border-color 0.2s ease, box-shadow 0.2s ease',
-};
-
-const primaryButtonStyle: React.CSSProperties = {
-  border: 'none',
-  borderRadius: '10px',
-  padding: '0.8rem 1rem',
-  background: '#2563eb',
-  color: '#ffffff',
-  fontWeight: 700,
-  cursor: 'pointer',
-};
 
 export default LoginPage;

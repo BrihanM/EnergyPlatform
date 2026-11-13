@@ -60,9 +60,9 @@ export function LoginForm(): ReactElement {
   const passwordError = fieldErrors.password ?? validationErrors.password
 
   return (
-    <form onSubmit={handleSubmit} noValidate style={{ display: 'grid', gap: '1rem' }}>
+    <form className="auth-form" onSubmit={handleSubmit} noValidate>
       <div>
-        <label htmlFor="identifier" style={{ display: 'block', marginBottom: '0.4rem', fontWeight: 600 }}>
+        <label htmlFor="identifier">
           Username or email
         </label>
         <input
@@ -75,27 +75,19 @@ export function LoginForm(): ReactElement {
           placeholder="jdoe or john@example.com"
           aria-invalid={Boolean(identifierError)}
           aria-describedby={identifierError ? 'identifier-error' : undefined}
-          style={{
-            width: '100%',
-            border: identifierError ? '1px solid #dc2626' : '1px solid #cbd5e1',
-            borderRadius: '10px',
-            padding: '0.8rem 0.9rem',
-            fontSize: '1rem',
-            outline: 'none',
-          }}
         />
         {identifierError ? (
-          <div id="identifier-error" style={{ marginTop: '0.35rem', color: '#b91c1c', fontSize: '0.85rem' }}>
+          <div id="identifier-error" className="auth-field-error">
             {identifierError}
           </div>
         ) : null}
       </div>
 
       <div>
-        <label htmlFor="password" style={{ display: 'block', marginBottom: '0.4rem', fontWeight: 600 }}>
+        <label htmlFor="password">
           Password
         </label>
-        <div style={{ position: 'relative' }}>
+        <div className="auth-password-field">
           <input
             id="password"
             name="password"
@@ -106,68 +98,35 @@ export function LoginForm(): ReactElement {
             placeholder="Enter your password"
             aria-invalid={Boolean(passwordError)}
             aria-describedby={passwordError ? 'password-error' : undefined}
-            style={{
-              width: '100%',
-              border: passwordError ? '1px solid #dc2626' : '1px solid #cbd5e1',
-              borderRadius: '10px',
-              padding: '0.8rem 2.75rem 0.8rem 0.9rem',
-              fontSize: '1rem',
-              outline: 'none',
-            }}
           />
           <button
+            className="password-toggle"
             type="button"
             onClick={() => setShowPassword((current) => !current)}
             aria-label={showPassword ? 'Hide password' : 'Show password'}
-            style={{
-              position: 'absolute',
-              right: '0.65rem',
-              top: '50%',
-              transform: 'translateY(-50%)',
-              border: 'none',
-              background: 'transparent',
-              color: '#475569',
-              fontWeight: 600,
-              cursor: 'pointer',
-            }}
           >
             {showPassword ? 'Hide' : 'Show'}
           </button>
         </div>
         {passwordError ? (
-          <div id="password-error" style={{ marginTop: '0.35rem', color: '#b91c1c', fontSize: '0.85rem' }}>
+          <div id="password-error" className="auth-field-error">
             {passwordError}
           </div>
         ) : null}
       </div>
 
       <button
+        className="primary-button"
         type="submit"
         disabled={isSubmitting}
-        style={{
-          border: 'none',
-          borderRadius: '10px',
-          padding: '0.85rem 1rem',
-          background: '#2563eb',
-          color: '#ffffff',
-          fontWeight: 700,
-          cursor: isSubmitting ? 'not-allowed' : 'pointer',
-          opacity: isSubmitting ? 0.75 : 1,
-        }}
       >
         {isSubmitting ? 'Signing in...' : 'Sign in'}
       </button>
 
       {hasError && error ? (
         <div
+          className="auth-feedback auth-feedback-error"
           role="alert"
-          style={{
-            padding: '0.85rem 1rem',
-            borderRadius: '10px',
-            background: '#fef2f2',
-            border: '1px solid #fecaca',
-            color: '#b91c1c',
-          }}
         >
           {error}
         </div>

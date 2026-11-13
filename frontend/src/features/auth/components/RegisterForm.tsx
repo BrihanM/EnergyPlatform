@@ -123,32 +123,18 @@ export function RegisterForm({ onSwitchToLogin }: RegisterFormProps): ReactEleme
 
   if (isSuccess) {
     return (
-      <div style={{ display: 'grid', gap: '1rem' }}>
+      <div className="auth-form-fields">
         <div
+          className="auth-feedback auth-feedback-success"
           role="status"
-          style={{
-            padding: '0.9rem 1rem',
-            borderRadius: '10px',
-            background: '#ecfdf5',
-            border: '1px solid #a7f3d0',
-            color: '#166534',
-          }}
         >
           Account created successfully. Please sign in.
         </div>
         {onSwitchToLogin ? (
           <button
+            className="primary-button"
             type="button"
             onClick={onSwitchToLogin}
-            style={{
-              border: 'none',
-              borderRadius: '10px',
-              padding: '0.85rem 1rem',
-              background: '#2563eb',
-              color: '#ffffff',
-              fontWeight: 700,
-              cursor: 'pointer',
-            }}
           >
             Go to sign in
           </button>
@@ -158,10 +144,10 @@ export function RegisterForm({ onSwitchToLogin }: RegisterFormProps): ReactEleme
   }
 
   return (
-    <form onSubmit={handleSubmit} noValidate style={{ display: 'grid', gap: '1rem' }}>
-      <div style={{ display: 'grid', gap: '1rem', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))' }}>
+    <form className="auth-form" onSubmit={handleSubmit} noValidate>
+      <div className="auth-name-fields">
         <div>
-          <label htmlFor="firstName" style={{ display: 'block', marginBottom: '0.4rem', fontWeight: 600 }}>
+          <label htmlFor="firstName">
             First name
           </label>
           <input
@@ -170,24 +156,16 @@ export function RegisterForm({ onSwitchToLogin }: RegisterFormProps): ReactEleme
             autoComplete="given-name"
             {...fieldProps('firstName')}
             placeholder="Ana"
-            style={{
-              width: '100%',
-              border: fieldErrors.firstName || validationErrors.firstName ? '1px solid #dc2626' : '1px solid #cbd5e1',
-              borderRadius: '10px',
-              padding: '0.8rem 0.9rem',
-              fontSize: '1rem',
-              outline: 'none',
-            }}
           />
           {(fieldErrors.firstName ?? validationErrors.firstName) ? (
-            <div id="firstName-error" style={{ marginTop: '0.35rem', color: '#b91c1c', fontSize: '0.85rem' }}>
+            <div id="firstName-error" className="auth-field-error">
               {fieldErrors.firstName ?? validationErrors.firstName}
             </div>
           ) : null}
         </div>
 
         <div>
-          <label htmlFor="lastName" style={{ display: 'block', marginBottom: '0.4rem', fontWeight: 600 }}>
+          <label htmlFor="lastName">
             Last name
           </label>
           <input
@@ -196,17 +174,9 @@ export function RegisterForm({ onSwitchToLogin }: RegisterFormProps): ReactEleme
             autoComplete="family-name"
             {...fieldProps('lastName')}
             placeholder="García"
-            style={{
-              width: '100%',
-              border: fieldErrors.lastName || validationErrors.lastName ? '1px solid #dc2626' : '1px solid #cbd5e1',
-              borderRadius: '10px',
-              padding: '0.8rem 0.9rem',
-              fontSize: '1rem',
-              outline: 'none',
-            }}
           />
           {(fieldErrors.lastName ?? validationErrors.lastName) ? (
-            <div id="lastName-error" style={{ marginTop: '0.35rem', color: '#b91c1c', fontSize: '0.85rem' }}>
+            <div id="lastName-error" className="auth-field-error">
               {fieldErrors.lastName ?? validationErrors.lastName}
             </div>
           ) : null}
@@ -214,7 +184,7 @@ export function RegisterForm({ onSwitchToLogin }: RegisterFormProps): ReactEleme
       </div>
 
       <div>
-        <label htmlFor="username" style={{ display: 'block', marginBottom: '0.4rem', fontWeight: 600 }}>
+        <label htmlFor="username">
           Username
         </label>
         <input
@@ -223,24 +193,16 @@ export function RegisterForm({ onSwitchToLogin }: RegisterFormProps): ReactEleme
           autoComplete="username"
           {...fieldProps('username')}
           placeholder="ana.garcia"
-          style={{
-            width: '100%',
-            border: fieldErrors.username || validationErrors.username ? '1px solid #dc2626' : '1px solid #cbd5e1',
-            borderRadius: '10px',
-            padding: '0.8rem 0.9rem',
-            fontSize: '1rem',
-            outline: 'none',
-          }}
         />
         {(fieldErrors.username ?? validationErrors.username) ? (
-          <div id="username-error" style={{ marginTop: '0.35rem', color: '#b91c1c', fontSize: '0.85rem' }}>
+          <div id="username-error" className="auth-field-error">
             {fieldErrors.username ?? validationErrors.username}
           </div>
         ) : null}
       </div>
 
       <div>
-        <label htmlFor="email" style={{ display: 'block', marginBottom: '0.4rem', fontWeight: 600 }}>
+        <label htmlFor="email">
           Email
         </label>
         <input
@@ -249,70 +211,44 @@ export function RegisterForm({ onSwitchToLogin }: RegisterFormProps): ReactEleme
           autoComplete="email"
           {...fieldProps('email')}
           placeholder="ana@example.com"
-          style={{
-            width: '100%',
-            border: fieldErrors.email || validationErrors.email ? '1px solid #dc2626' : '1px solid #cbd5e1',
-            borderRadius: '10px',
-            padding: '0.8rem 0.9rem',
-            fontSize: '1rem',
-            outline: 'none',
-          }}
         />
         {(fieldErrors.email ?? validationErrors.email) ? (
-          <div id="email-error" style={{ marginTop: '0.35rem', color: '#b91c1c', fontSize: '0.85rem' }}>
+          <div id="email-error" className="auth-field-error">
             {fieldErrors.email ?? validationErrors.email}
           </div>
         ) : null}
       </div>
 
       <div>
-        <label htmlFor="password" style={{ display: 'block', marginBottom: '0.4rem', fontWeight: 600 }}>
+        <label htmlFor="password">
           Password
         </label>
-        <div style={{ position: 'relative' }}>
+        <div className="auth-password-field">
           <input
             id="password"
             type={showPassword ? 'text' : 'password'}
             autoComplete="new-password"
             {...fieldProps('password')}
             placeholder="Create a password"
-            style={{
-              width: '100%',
-              border: fieldErrors.password || validationErrors.password ? '1px solid #dc2626' : '1px solid #cbd5e1',
-              borderRadius: '10px',
-              padding: '0.8rem 2.75rem 0.8rem 0.9rem',
-              fontSize: '1rem',
-              outline: 'none',
-            }}
           />
           <button
+            className="password-toggle"
             type="button"
             onClick={() => setShowPassword((current) => !current)}
             aria-label={showPassword ? 'Hide password' : 'Show password'}
-            style={{
-              position: 'absolute',
-              right: '0.65rem',
-              top: '50%',
-              transform: 'translateY(-50%)',
-              border: 'none',
-              background: 'transparent',
-              color: '#475569',
-              fontWeight: 600,
-              cursor: 'pointer',
-            }}
           >
             {showPassword ? 'Hide' : 'Show'}
           </button>
         </div>
         {(fieldErrors.password ?? validationErrors.password) ? (
-          <div id="password-error" style={{ marginTop: '0.35rem', color: '#b91c1c', fontSize: '0.85rem' }}>
+          <div id="password-error" className="auth-field-error">
             {fieldErrors.password ?? validationErrors.password}
           </div>
         ) : null}
       </div>
 
       <div>
-        <label htmlFor="confirmPassword" style={{ display: 'block', marginBottom: '0.4rem', fontWeight: 600 }}>
+        <label htmlFor="confirmPassword">
           Confirm password
         </label>
         <input
@@ -321,49 +257,26 @@ export function RegisterForm({ onSwitchToLogin }: RegisterFormProps): ReactEleme
           autoComplete="new-password"
           {...fieldProps('confirmPassword')}
           placeholder="Repeat your password"
-          style={{
-            width: '100%',
-            border: fieldErrors.confirmPassword || validationErrors.confirmPassword ? '1px solid #dc2626' : '1px solid #cbd5e1',
-            borderRadius: '10px',
-            padding: '0.8rem 0.9rem',
-            fontSize: '1rem',
-            outline: 'none',
-          }}
         />
         {(fieldErrors.confirmPassword ?? validationErrors.confirmPassword) ? (
-          <div id="confirmPassword-error" style={{ marginTop: '0.35rem', color: '#b91c1c', fontSize: '0.85rem' }}>
+          <div id="confirmPassword-error" className="auth-field-error">
             {fieldErrors.confirmPassword ?? validationErrors.confirmPassword}
           </div>
         ) : null}
       </div>
 
       <button
+        className="primary-button"
         type="submit"
         disabled={isSubmitting}
-        style={{
-          border: 'none',
-          borderRadius: '10px',
-          padding: '0.85rem 1rem',
-          background: '#2563eb',
-          color: '#ffffff',
-          fontWeight: 700,
-          cursor: isSubmitting ? 'not-allowed' : 'pointer',
-          opacity: isSubmitting ? 0.75 : 1,
-        }}
       >
         {isSubmitting ? 'Creating account...' : 'Create account'}
       </button>
 
       {status === 'error' && error ? (
         <div
+          className="auth-feedback auth-feedback-error"
           role="alert"
-          style={{
-            padding: '0.85rem 1rem',
-            borderRadius: '10px',
-            background: '#fef2f2',
-            border: '1px solid #fecaca',
-            color: '#b91c1c',
-          }}
         >
           {error}
         </div>

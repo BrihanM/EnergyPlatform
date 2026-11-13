@@ -33,47 +33,22 @@ export function AuthenticatedHomePage(): ReactElement {
   }
 
   return (
-    <main
-      style={{
-        minHeight: '100vh',
-        display: 'grid',
-        placeItems: 'center',
-        padding: '2rem 1rem',
-        background: 'linear-gradient(135deg, #eff6ff 0%, #f8fafc 100%)',
-      }}
-    >
-      <section
-        style={{
-          width: 'min(420px, 100%)',
-          background: '#ffffff',
-          borderRadius: '20px',
-          border: '1px solid #e2e8f0',
-          boxShadow: '0 24px 60px rgba(15, 23, 42, 0.08)',
-          padding: '2rem',
-        }}
-      >
-        <h1 style={{ margin: '0 0 0.75rem', fontSize: '1.8rem' }}>Authenticated area</h1>
-        <p style={{ margin: '0 0 1.5rem', color: '#475569' }}>
+    <main className="auth-page">
+      <section className="auth-card">
+        <div className="auth-card-body">
+        <h1>Authenticated area</h1>
+        <p className="auth-description">
           You are signed in as {user?.username ?? user?.email ?? 'member'}.
         </p>
         <button
+          className="danger-button"
           type="button"
           onClick={handleLogout}
           disabled={isLoggingOut}
-          style={{
-            width: '100%',
-            border: 'none',
-            borderRadius: '10px',
-            padding: '0.8rem 1rem',
-            background: '#dc2626',
-            color: '#ffffff',
-            fontWeight: 700,
-            cursor: isLoggingOut ? 'not-allowed' : 'pointer',
-            opacity: isLoggingOut ? 0.75 : 1,
-          }}
         >
           {isLoggingOut ? 'Signing out...' : 'Sign out'}
         </button>
+        </div>
       </section>
     </main>
   )
